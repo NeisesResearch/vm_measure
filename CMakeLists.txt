@@ -21,7 +21,7 @@ set(cpp_flags "-DKERNELARMPLATFORM_QEMU-ARM-VIRT")
 AddToFileServer("linux" "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/newLinux")
 
 # Grab the default rootfs
-set(rootfs_file "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/rootfs.cpio.gz")
+set(rootfs_file "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/rootfs_crossvm.cpio.gz")
 
 include(${CAMKES_VM_LINUX_SOURCE_HELPERS_PATH})
 include(${CAMKES_VM_LINUX_MODULE_HELPERS_PATH})
@@ -49,8 +49,18 @@ ExternalProject_Add(measure-module
         -DLINUX_KERNEL_DIR=${linux_dir}
         -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
 )
+# Add our module binary to the overlay
+# The number at this time happens to be 275.
+AddExternalProjFilesToOverlay(
+    measure-module
+    ${CMAKE_CURRENT_BINARY_DIR}/measure-module
+    vm-overlay
+    "lib/modules/4.9.275/kernel/drivers/vmm"
+    FILES
+    measure.ko
+)
 
-# Add the external poison module project
+# Add another module
 ExternalProject_Add(poison-module
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/poison-module
@@ -64,17 +74,6 @@ ExternalProject_Add(poison-module
         -DLINUX_KERNEL_DIR=${linux_dir}
         -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
 )
-
-# Add our module binaries to the overlay
-# The number at this time happens to be 275.
-AddExternalProjFilesToOverlay(
-    measure-module
-    ${CMAKE_CURRENT_BINARY_DIR}/measure-module
-    vm-overlay
-    "lib/modules/4.9.275/kernel/drivers/vmm"
-    FILES
-    measure.ko
-)
 AddExternalProjFilesToOverlay(
     poison-module
     ${CMAKE_CURRENT_BINARY_DIR}/poison-module
@@ -84,6 +83,124 @@ AddExternalProjFilesToOverlay(
     poison.ko
 )
 
+# Add another module
+ExternalProject_Add(dataports-module
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/dataports-module
+    BUILD_ALWAYS ON
+    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/dataports-module-stamp
+    EXCLUDE_FROM_ALL
+    INSTALL_COMMAND ""
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_TOOLCHAIN_FILE=${LINUX_64BIT_TOOLCHAIN}
+        -DLINUX_KERNEL_DIR=${linux_dir}
+        -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
+)
+AddExternalProjFilesToOverlay(
+    dataports-module
+    ${CMAKE_CURRENT_BINARY_DIR}/dataports-module
+    vm-overlay
+    "lib/modules/4.9.275/kernel/drivers/vmm"
+    FILES
+    dataports.ko
+)
+
+
+
+    # Complile CrossVM Dataport Apps
+    ExternalProject_Add(
+        dataport-apps
+        URL
+        file:///${CAMKES_VM_LINUX_DIR}/camkes-linux-artifacts/camkes-linux-apps/camkes-connector-apps/pkgs/dataport
+        BINARY_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}/dataport_apps
+        INSTALL_COMMAND
+        ""
+        BUILD_ALWAYS
+        ON
+        EXCLUDE_FROM_ALL
+        CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    )
+    AddExternalProjFilesToOverlay(
+        dataport-apps
+        ${CMAKE_CURRENT_BINARY_DIR}/dataport_apps
+        vm-overlay
+        "usr/bin"
+        FILES
+        dataport_read
+        dataport_write
+    )
+
+    # Complile CrossVM Event Apps
+    ExternalProject_Add(
+        event-apps
+        URL
+        file:///${CAMKES_VM_LINUX_DIR}/camkes-linux-artifacts/camkes-linux-apps/camkes-connector-apps/pkgs/emits_event
+        BINARY_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}/emits_event_apps
+        INSTALL_COMMAND
+        ""
+        BUILD_ALWAYS
+        ON
+        EXCLUDE_FROM_ALL
+        CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    )
+    AddExternalProjFilesToOverlay(
+        event-apps
+        ${CMAKE_CURRENT_BINARY_DIR}/emits_event_apps
+        vm-overlay
+        "usr/bin"
+        FILES
+        emits_event_emit
+    )
+
+    # Complile CrossVM Consume Event Apps
+    ExternalProject_Add(
+        consume-event-apps
+        URL
+        file:///${CAMKES_VM_LINUX_DIR}/camkes-linux-artifacts/camkes-linux-apps/camkes-connector-apps/pkgs/consumes_event
+        BINARY_DIR
+        ${CMAKE_CURRENT_BINARY_DIR}/consume_event_apps
+        INSTALL_COMMAND
+        ""
+        BUILD_ALWAYS
+        ON
+        EXCLUDE_FROM_ALL
+        CMAKE_ARGS
+        -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
+    )
+    AddExternalProjFilesToOverlay(
+        consume-event-apps
+        ${CMAKE_CURRENT_BINARY_DIR}/consume_event_apps
+        vm-overlay
+        "usr/bin"
+        FILES
+        consumes_event_wait
+    )
+
+    # Add script to initialise dataport module
+    AddFileToOverlayDir(
+        "S90crossvm_module_init"
+        ${CMAKE_CURRENT_SOURCE_DIR}/overlay_files/init_scripts/cross_vm_module_init
+        "etc/init.d"
+        vm-overlay
+    )
+
+    # Add script to test dataport module
+    AddFileToOverlayDir(
+        "S91crossvm_test"
+        ${CMAKE_CURRENT_SOURCE_DIR}/overlay_files/init_scripts/cross_vm_test
+        "etc/init.d"
+        vm-overlay
+    )
+
+
+
+
+
 # Add our poison module's init script- just an insmod call
 AddFileToOverlayDir(
     "mike_modules_init"
@@ -91,6 +208,7 @@ AddFileToOverlayDir(
     "etc/init.d"
     vm-overlay
 )
+
 
 # Generate overlayed rootfs
 AddOverlayDirToRootfs(
@@ -131,6 +249,12 @@ AddCamkesCPPFlag(cpp_flags CONFIG_VARS VmEmmc2NoDMA VmVUSB Tk1DeviceFwd Tk1Insec
 DefineCAmkESVMFileServer()
 
 CAmkESAddImportPath(${KernelARMPlatform})
+
+# Define our VM Component with out cross vm dataports glue code
+DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
+
+# Define our demo component that shares a dataport with the VM
+DeclareCAmkESComponent(Measurer SOURCES components/Measurer/measurer.c)
 
 # Declare root server
 DeclareCAmkESRootserver(

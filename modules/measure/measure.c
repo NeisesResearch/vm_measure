@@ -7,6 +7,11 @@
 #include <asm/kvm_para.h>
 #include <asm/io.h>
 
+//includes for emit/consume events
+//#include <sys/types.h>
+//#include <sys/stat.h>
+//#include <sys/mman.h>
+
 
 struct buffer {
     char* p;
@@ -15,6 +20,7 @@ struct buffer {
 };
 
 static int __init hello_init(void) {
+
     struct module *mod;
     struct module_layout myLayout;
     int it = 0;
@@ -22,7 +28,7 @@ static int __init hello_init(void) {
     printk("\n==============================\n");
     printk("Listing the loaded kernel modules...\n");
 
- //   mutex_lock(&module_mutex);
+//   mutex_lock(&module_mutex);
     list_for_each_entry(mod, &THIS_MODULE->list, list)
             printk(KERN_INFO "%s\n", mod->name);
             myLayout = mod->core_layout;
@@ -36,6 +42,7 @@ static int __init hello_init(void) {
 
 
     printk("\n==============================\n");
+
     return 0;
 }
 

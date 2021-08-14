@@ -28,7 +28,7 @@ assembly {
         };
 
         vm0.linux_image_config = {
-            "linux_bootcmdline" : "",
+            "linux_bootcmdline" : "pci=nomsi,realloc=off,bios initcall_blacklist=clk_disable_unused",
             "linux_stdout" : "/pl011@9000000",
         };
         vm0.num_vcpus = 2;

@@ -10,6 +10,7 @@ if(NOT "${PLATFORM}" IN_LIST supported)
          Supported: ${supported}")
 endif()
 
+set(VmPCISupport ON CACHE BOOL "" FORCE)
 set(LibUSB OFF CACHE BOOL "" FORCE)
 
 # force cpu
