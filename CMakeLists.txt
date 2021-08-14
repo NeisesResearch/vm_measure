@@ -8,7 +8,7 @@
 
 cmake_minimum_required(VERSION 3.8.2)
 
-project(module-minimal C)
+project(vm-measure C)
 
 include(${CAMKES_ARM_VM_HELPERS_PATH})
 
@@ -134,7 +134,7 @@ CAmkESAddImportPath(${KernelARMPlatform})
 
 # Declare root server
 DeclareCAmkESRootserver(
-    module_minimal.camkes
+    vm_measure.camkes
     CPP_FLAGS
     ${cpp_flags}
     CPP_INCLUDES
