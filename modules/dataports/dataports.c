@@ -184,16 +184,116 @@ static struct pci_driver connector_pci_driver = {
     .remove = connector_pci_remove,
 };
 
-/*
+
+static void dataportWrite(uint8_t* data)
+{
+    //write something to the dataport
+    connector_dev_node_t* connector = devices[0];
+    struct uio_info* uio = connector->uio;
+    struct uio_mem uio_mem = uio->mem[0];
+    void __iomem* internal_addr = uio_mem.internal_addr;
+    //void* internal_addr = uio_mem.internal_addr;
+
+    int i=0;
+    for(i=0; i<4096; i++)
+    {
+        /*
+        iowrite8((u8)255, internal_addr);
+        writel(data, internal_addr);
+        
+        internal_addr = (u32)internal_addr + 1;
+        */
+    }
+    iowrite8((u8)*data, internal_addr);
+
+
+    /*
+    unsigned long dataport_addr = uio_mem.addr;
+    printk("Addr is %lx\n", dataport_addr);
+    void* dataport = (void*)dataport_addr;
+    *((char*)dataport) = "m";
+    */
+
+
+}
+
+static void dataportRead(u32* result)
+{
+    int i;
+    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
+    for (i=0; i<1024; i++)
+    {
+        result[i] = readl(internal_addr);
+        internal_addr = (u32*)internal_addr + 1;
+    }
+}
+
+static void dataportPrintData(u32* input)
+{
+    // print 8 rows of 128
+    int i;
+    int j;
+    printk("Dataport contained:\n");
+
+    u8* inputBytes = (u8*)input;
+
+    for(i=0;i<32;i++)
+    {
+        u8* thisRow = kmalloc(129, GFP_KERNEL);
+        for(j=0;j<128;j++)
+        {
+           thisRow[j] = inputBytes[128*i + j]; 
+        }
+        thisRow[128] = '\0';
+        printk("%s\n", (char*)thisRow);
+    }
+
+    /*
+    for(i=0; i<1024; i++)
+    {
+        printk("%x", input[i]);
+        if(i % 128 == 0)
+        {
+            printk("\n");
+        }
+    }
+    */
+}
+
 static int __init connector_init_module (void)
 {
     int result = pci_register_driver(&connector_pci_driver);
+
+    printk("module start\n");
+
+    u32* dpData = kmalloc(4096, GFP_KERNEL);
+
+    dataportRead(dpData);
+
+    dataportPrintData(dpData);
+
+
+
+
+
+
+
     return result;
 }
-module_init(connector_init_module);
-*/
 
-module_pci_driver(connector_pci_driver);
+static void __exit connector_exit_module(void)
+{
+    pci_dev_put(devices[0]->dev);
+}
+
+
+
+module_init(connector_init_module);
+module_exit(connector_exit_module);
+
+//module_pci_driver(connector_pci_driver);
 
 MODULE_DEVICE_TABLE(pci, connector_pci_ids);
 MODULE_LICENSE("GPL v2");
+
+

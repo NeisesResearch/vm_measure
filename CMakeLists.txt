@@ -21,7 +21,7 @@ set(cpp_flags "-DKERNELARMPLATFORM_QEMU-ARM-VIRT")
 AddToFileServer("linux" "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/newLinux")
 
 # Grab the default rootfs
-set(rootfs_file "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/rootfs_crossvm.cpio.gz")
+set(rootfs_file "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/rootfs.cpio.gz")
 
 include(${CAMKES_VM_LINUX_SOURCE_HELPERS_PATH})
 include(${CAMKES_VM_LINUX_MODULE_HELPERS_PATH})
@@ -189,13 +189,14 @@ AddExternalProjFilesToOverlay(
         vm-overlay
     )
 
+
     # Add script to test dataport module
-    AddFileToOverlayDir(
-        "S91crossvm_test"
-        ${CMAKE_CURRENT_SOURCE_DIR}/overlay_files/init_scripts/cross_vm_test
-        "etc/init.d"
-        vm-overlay
-    )
+#    AddFileToOverlayDir(
+#        "S91crossvm_test"
+#        ${CMAKE_CURRENT_SOURCE_DIR}/overlay_files/init_scripts/cross_vm_test
+#        "etc/init.d"
+#        vm-overlay
+#    )
 
 
 

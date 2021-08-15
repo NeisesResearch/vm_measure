@@ -9,8 +9,10 @@
 
 int run(void)
 {
-    memset(dest, '\0', 4096);
-    strcpy(dest, "This is a crossvm dataport test string\n");
+    memset(dest, '0', 4096);
+    printf("Dataport reset!\n");
+
+    strcpy(dest, "This is a crossvm dataport test string");
 
     while (1) {
         ready_wait();
