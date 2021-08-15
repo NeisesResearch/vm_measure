@@ -184,39 +184,6 @@ static struct pci_driver connector_pci_driver = {
     .remove = connector_pci_remove,
 };
 
-
-static void dataportWrite(uint8_t* data)
-{
-    //write something to the dataport
-    connector_dev_node_t* connector = devices[0];
-    struct uio_info* uio = connector->uio;
-    struct uio_mem uio_mem = uio->mem[0];
-    void __iomem* internal_addr = uio_mem.internal_addr;
-    //void* internal_addr = uio_mem.internal_addr;
-
-    int i=0;
-    for(i=0; i<4096; i++)
-    {
-        /*
-        iowrite8((u8)255, internal_addr);
-        writel(data, internal_addr);
-        
-        internal_addr = (u32)internal_addr + 1;
-        */
-    }
-    iowrite8((u8)*data, internal_addr);
-
-
-    /*
-    unsigned long dataport_addr = uio_mem.addr;
-    printk("Addr is %lx\n", dataport_addr);
-    void* dataport = (void*)dataport_addr;
-    *((char*)dataport) = "m";
-    */
-
-
-}
-
 static void dataportRead(u32* result)
 {
     int i;
@@ -259,6 +226,17 @@ static void dataportPrintData(u32* input)
     }
     */
 }
+    
+static void dataportWrite(u32* input, int length)
+{
+    int i;
+    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
+    for (i=0; i<length && i<1024; i++)
+    {
+        writel(input[i], internal_addr);
+        internal_addr = (u32*)internal_addr + 1;
+    }
+}
 
 static int __init connector_init_module (void)
 {
@@ -272,11 +250,19 @@ static int __init connector_init_module (void)
 
     dataportPrintData(dpData);
 
+    // build string to write
+    u32* dpNewData = kmalloc(4096, GFP_KERNEL);
+    int i;
+    for (i=0; i<1024; i++)
+    {
+        dpNewData[i] = 0x6d6d6d6d;
+    }
 
+    dataportWrite(dpNewData, 1024);
 
+    dataportRead(dpData);
 
-
-
+    dataportPrintData(dpData);
 
     return result;
 }

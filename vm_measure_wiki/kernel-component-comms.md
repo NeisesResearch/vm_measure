@@ -27,6 +27,6 @@ I was able to read the dataport successfully by accessing the address through th
 
 
 ### todo
-- [ ] implement writing to the dataport
+- [x] implement writing to the dataport
 - [ ] disable access to /dev/uio0
     

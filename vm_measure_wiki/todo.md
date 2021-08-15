@@ -2,7 +2,7 @@
 
 ### Implementation todo
 - [x] Implement kernel module measurement
-- [ ] Implement module-CAmkES communication
+- [x] Implement module-CAmkES communication
 - [ ] Implement measurement-request signal
 - [ ] Implement module-removal signal
 - [ ] Implement Linux binary measurement
