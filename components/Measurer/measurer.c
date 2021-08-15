@@ -14,11 +14,20 @@ int run(void)
 
     strcpy(dest, "This is a crossvm dataport test string");
 
+    // wait until the Linux kernel module is ready
+    ready_wait();
+
+    printf("\n\nMeasurement module ready!\n\n");
+
+    // request a measurement
+    done_emit_underlying();
+
+    /*
     while (1) {
-        ready_wait();
         printf("Got an event\n");
         done_emit_underlying();
     }
+    */
 
     return 0;
 }

@@ -4,15 +4,19 @@
 - [x] Implement kernel module measurement
 - [x] Implement module-CAmkES communication
 - [ ] Implement measurement
+- [ ] Implement module data analyzer
+- [ ] Implement heartbeat
 - [ ] Implement module-removal signal
 - [ ] Implement module memory lock
-- [ ] Implement module data analyzer
 - [ ] Implement linux kill-switch
+
+### Implementation Future todo
 - [ ] Implement linux reset
 - [ ] Ensure access restriction to /dev/uio0
 - [ ] Implement Linux binary measurement
 - [ ] Implement Addition Attack
 - [ ] Implement Impersonation Attack
+- [ ] Cleanup Warnings Backlog
 
 ### Documentation todo
 - [x] Create trust argument outline

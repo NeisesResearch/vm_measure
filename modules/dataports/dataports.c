@@ -34,6 +34,84 @@ typedef struct connector_dev_node {
 connector_dev_node_t *devices[MAX_CONNECTOR_DEVICES];
 unsigned int current_free_dev = 0;
 
+
+static void dataportRead(u32* result)
+{
+    int i;
+    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
+    for (i=0; i<1024; i++)
+    {
+        result[i] = readl(internal_addr);
+        internal_addr = (u32*)internal_addr + 1;
+    }
+}
+
+static void dataportPrintData(u32* input)
+{
+    // print 8 rows of 128
+    int i;
+    int j;
+    printk("Dataport contained:\n");
+
+    u8* inputBytes = (u8*)input;
+
+    for(i=0;i<32;i++)
+    {
+        u8* thisRow = kmalloc(129, GFP_KERNEL);
+        for(j=0;j<128;j++)
+        {
+           thisRow[j] = inputBytes[128*i + j]; 
+        }
+        thisRow[128] = '\0';
+        printk("%s\n", (char*)thisRow);
+    }
+
+    /*
+    for(i=0; i<1024; i++)
+    {
+        printk("%x", input[i]);
+        if(i % 128 == 0)
+        {
+            printk("\n");
+        }
+    }
+    */
+}
+    
+static void dataportWrite(u32* input, int length)
+{
+    int i;
+    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
+    for (i=0; i<length && i<1024; i++)
+    {
+        writel(input[i], internal_addr);
+        internal_addr = (u32*)internal_addr + 1;
+    }
+}
+
+/*
+static void dataportWait()
+{
+    int i;
+    phys_addr_t internal_addr = devices[0]->uio->mem[0].internal_addr;
+    for (i=0; i<1024; i++)
+    {
+        result[i] = readl(internal_addr);
+        internal_addr = (u32*)internal_addr + 1;
+    }
+}
+*/
+
+
+
+static void measureModules(void)
+{
+    printk("Got a measurement request...\n");
+    u32* dpData = kmalloc(4096, GFP_KERNEL);
+    dataportRead(dpData);
+    dataportPrintData(dpData);
+}
+
 static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
 {
     uint32_t *event_bar = dev_info->mem[0].internal_addr;
@@ -46,6 +124,10 @@ static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
     /* Clear the register and return IRQ
      * TODO: Currently avoiding IRQ count value - we might want to use it? */
     writel(0, &event_bar[1]);
+
+    // do the measurement
+    measureModules();
+
     return IRQ_HANDLED;
 }
 
@@ -184,65 +266,23 @@ static struct pci_driver connector_pci_driver = {
     .remove = connector_pci_remove,
 };
 
-static void dataportRead(u32* result)
+
+static void send_ready_signal(void)
 {
-    int i;
-    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
-    for (i=0; i<1024; i++)
-    {
-        result[i] = readl(internal_addr);
-        internal_addr = (u32*)internal_addr + 1;
-    }
-}
-
-static void dataportPrintData(u32* input)
-{
-    // print 8 rows of 128
-    int i;
-    int j;
-    printk("Dataport contained:\n");
-
-    u8* inputBytes = (u8*)input;
-
-    for(i=0;i<32;i++)
-    {
-        u8* thisRow = kmalloc(129, GFP_KERNEL);
-        for(j=0;j<128;j++)
-        {
-           thisRow[j] = inputBytes[128*i + j]; 
-        }
-        thisRow[128] = '\0';
-        printk("%s\n", (char*)thisRow);
-    }
-
-    /*
-    for(i=0; i<1024; i++)
-    {
-        printk("%x", input[i]);
-        if(i % 128 == 0)
-        {
-            printk("\n");
-        }
-    }
-    */
-}
-    
-static void dataportWrite(u32* input, int length)
-{
-    int i;
-    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
-    for (i=0; i<length && i<1024; i++)
-    {
-        writel(input[i], internal_addr);
-        internal_addr = (u32*)internal_addr + 1;
-    }
+    uint32_t* event_bar = devices[0]->uio->mem[0].internal_addr;
+    writel(1, &event_bar[0]);
 }
 
 static int __init connector_init_module (void)
 {
     int result = pci_register_driver(&connector_pci_driver);
 
-    printk("module start\n");
+    printk("Measurement Module Start\n");
+
+    send_ready_signal();
+
+    /*
+    dataportWait();
 
     u32* dpData = kmalloc(4096, GFP_KERNEL);
 
@@ -263,6 +303,7 @@ static int __init connector_init_module (void)
     dataportRead(dpData);
 
     dataportPrintData(dpData);
+    */
 
     return result;
 }
