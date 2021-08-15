@@ -7,9 +7,11 @@
 - [ ] Implement module-removal signal
 - [ ] Implement Linux binary measurement
 - [ ] Implement module memory lock
+- [ ] Ensure access restriction to /dev/uio0
 
 ### Documentation todo
 - [x] Create trust argument outline
+- [x] Add high level explanation
 - [ ] Write up kernel module measurement
 - [ ] Write up the module-CAmkES communication architecture
 - [ ] Write up the measurement-request signal
