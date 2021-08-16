@@ -6,11 +6,8 @@
 - [x] Implement module name measurement
 - [x] Implement Addition Attack
 - [x] Implement module rodata measurement
-- [ ] Implement heartbeat
-- [ ] Implement module-removal signal
-- [ ] Implement module memory lock
-- [ ] Implement linux kill-switch
-- [ ] Implement final measurement
+- [ ] Implement rodata hash
+- [ ] Free every alloc
 
 ### Implementation Future todo
 - [ ] Implement linux reset
@@ -18,6 +15,11 @@
 - [ ] Implement Linux binary measurement
 - [ ] Implement Impersonation Attack
 - [x] Cleanup Warnings Backlog
+- [ ] Implement heartbeat
+- [ ] Implement module-removal signal
+- [ ] Implement module memory lock
+- [ ] Implement linux kill-switch
+- [ ] Implement final measurement
 
 ### Documentation todo
 - [x] Create trust argument outline
