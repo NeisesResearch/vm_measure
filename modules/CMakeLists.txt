@@ -8,4 +8,4 @@ include("${MODULE_HELPERS_FILE}")
 
 DefineLinuxModule(${CMAKE_CURRENT_LIST_DIR}/print print-module print-target KERNEL_DIR ${LINUX_KERNEL_DIR})
 DefineLinuxModule(${CMAKE_CURRENT_LIST_DIR}/poison poison-module poison-target KERNEL_DIR ${LINUX_KERNEL_DIR})
-DefineLinuxModule(${CMAKE_CURRENT_LIST_DIR}/dataports dataports-module dataports-target KERNEL_DIR ${LINUX_KERNEL_DIR})
+DefineLinuxModule(${CMAKE_CURRENT_LIST_DIR}/measurement measurement-module measurement-target KERNEL_DIR ${LINUX_KERNEL_DIR})

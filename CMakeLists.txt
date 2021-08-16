@@ -84,11 +84,11 @@ AddExternalProjFilesToOverlay(
 )
 
 # Add another module
-ExternalProject_Add(dataports-module
+ExternalProject_Add(measurement-module
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/dataports-module
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/measurement-module
     BUILD_ALWAYS ON
-    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/dataports-module-stamp
+    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/measurement-module-stamp
     EXCLUDE_FROM_ALL
     INSTALL_COMMAND ""
     CMAKE_ARGS
@@ -98,12 +98,12 @@ ExternalProject_Add(dataports-module
         -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
 )
 AddExternalProjFilesToOverlay(
-    dataports-module
-    ${CMAKE_CURRENT_BINARY_DIR}/dataports-module
+    measurement-module
+    ${CMAKE_CURRENT_BINARY_DIR}/measurement-module
     vm-overlay
     "lib/modules/4.9.275/kernel/drivers/vmm"
     FILES
-    dataports.ko
+    measurement.ko
 )
 
 
