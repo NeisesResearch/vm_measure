@@ -25,6 +25,7 @@ int run(void)
     // grab the entire measurement
     uint32_t** theseMeasurements = malloc(100 * sizeof(uint32_t*));
     int numMeasurements = 0;
+    // this is MODULE_NAME_LEN as defined in module.h
     int moduleNameSize = 256;
 
     printf("Requesting measurements\n");
@@ -67,7 +68,7 @@ int run(void)
         printf("Measurement %d: ", i);
         for(int j=0; j<32; j++)
         {
-            if((uint8_t*)headerPtr[j] == 0x98)
+            if(((uint8_t*)headerPtr)[j] == 0x98)
             {
                 break;
             }

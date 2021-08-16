@@ -3,12 +3,13 @@
 ### Implementation todo
 - [x] Implement kernel module measurement
 - [x] Implement module-CAmkES communication
-- [ ] Implement measurement
+- [x] Implement simple measurement
 - [ ] Implement module data analyzer
 - [ ] Implement heartbeat
 - [ ] Implement module-removal signal
 - [ ] Implement module memory lock
 - [ ] Implement linux kill-switch
+- [ ] Implement final measurement
 
 ### Implementation Future todo
 - [ ] Implement linux reset

@@ -2,7 +2,9 @@
 - [x] Implement dataport signals
 - [x] Collect initial measurement data
 - [x] Chunk up initial measurement data
-- [x] Send initial measurement data to CAmkES- [x] Analyze initial measurement data in CAmkES
+- [x] Send initial measurement data to CAmkES
+- [x] Analyze initial measurement data in CAmkES
+- [x] Ensure measurement of poison module
 - [ ] Determine final data to measure
 - [ ] Implement sending all data
 

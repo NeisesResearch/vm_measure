@@ -36,6 +36,7 @@ unsigned int current_free_dev = 0;
 
 enum MeasurementState
 {
+    Initing,
     Waiting,
     CollectingModuleMeasurements,
     SendingModuleMeasurements,
@@ -57,7 +58,7 @@ u32* signoff = (u32*)"DEADBEEF";
 static void dataportRead(u32* result)
 {
     int i;
-    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
+    void* internal_addr = devices[0]->uio->mem[1].internal_addr;
     for (i=0; i<1024; i++)
     {
         result[i] = readl(internal_addr);
@@ -69,12 +70,13 @@ static void dataportPrintData(void)
 {
     int i;
     int j;
+    u8* inputBytes;
     u32* input = kmalloc(4096, GFP_KERNEL);
     dataportRead(input);
 
     // print 8 rows of 128
     printk("Dataport Contents:\n");
-    u8* inputBytes = (u8*)input;
+    inputBytes = (u8*)input;
     for(i=0;i<32;i++)
     {
         u8* thisRow = kmalloc(129, GFP_KERNEL);
@@ -96,12 +98,13 @@ static void send_ready_signal(void)
 
 static void dataportWrite(u32* input, int length)
 {
+    int i;
+    void* internal_addr;
     if(length > 1024)
     {
         printk("dataportWrite: length too large: input truncated");
     }
-    int i;
-    phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
+    internal_addr = devices[0]->uio->mem[1].internal_addr;
     for (i=0; i<length && i<1024; i++)
     {
         writel(input[i], internal_addr);
@@ -116,6 +119,7 @@ static void sendNextModuleMeasurement(void)
     u32* thisMeasurement = measurementManager.measurements[measurementManager.memory];
     if(thisMeasurement == NULL)
     {
+        printk("Sending Signoff...\n");
         measurementManager.state = Waiting;
         dataportWrite(signoff, 2);
     }
@@ -130,38 +134,49 @@ static void sendNextModuleMeasurement(void)
 
 static void measureModules(void)
 {
+    struct module *mod;
+    struct module_layout myLayout;
+    int it = 0;
+
     printk("Got a measurement request...\n");
-    //dataportPrintData();
 
     /*
     ** Assume there can be at most 100 modules
-    ** Assume no module has a longer name than 256 characters
+    ** Assume no module has a name longer than 256 characters
     ** :shrug:
     */
     measurementManager.measurements = kzalloc(100 * sizeof(uint32_t*), GFP_KERNEL);
     measurementManager.numMeasurements = 0;
-    int moduleNameSize = 256;
 
 
-    struct module *mod;
-    struct module_layout myLayout;
-    int it = 0;
 //   mutex_lock(&module_mutex);
+    //printk("my name is: %s\n", &THIS_MODULE->name);
     list_for_each_entry(mod, &THIS_MODULE->list, list)
-            printk(KERN_INFO, "%s\n", mod->name);
-            char* thisName = mod->name;
-            // for now, send only the name of the modules, padded with zeroes to 256 bytes
-            char* sendName = kmalloc(moduleNameSize, GFP_KERNEL);
-            for(it=0; it<strlen(thisName); it++)
-            {
-                sendName[it] = thisName[it];
-            }
-            for(it=strlen(thisName); it<moduleNameSize; it++)
-            {
-                sendName[it] = "0";
-            }
-            measurementManager.measurements[measurementManager.numMeasurements] = (u32*)sendName;
-            measurementManager.numMeasurements++;
+    {
+        char* thisName;
+        u8 firstByte = ((u8*)mod->name)[0];
+        if( 0x20 <= firstByte && firstByte <= 0x7F )
+        {
+            //printk("%s\n", mod->name);
+            thisName = mod->name;
+        }
+        else
+        {
+            thisName = "measurement";
+        }
+        // for now, send only the name of the modules, padded with zeroes to 256 bytes
+        char* sendName = kmalloc(MODULE_NAME_LEN, GFP_KERNEL);
+        for(it=0; it<strlen(thisName); it++)
+        {
+            sendName[it] = thisName[it];
+        }
+        for(it=strlen(thisName); it<MODULE_NAME_LEN; it++)
+        {
+            sendName[it] = "0";
+        }
+        measurementManager.measurements[measurementManager.numMeasurements] = (u32*)sendName;
+        measurementManager.numMeasurements++;
+    }
 //    mutex_unlock(&module_mutex);
 
     measurementManager.memory = 0;
@@ -186,6 +201,8 @@ static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
     //printk("\nGot an event!\n");
     switch(measurementManager.state)
     {
+        case Initing:
+            printk("Still initializing...\n");
         case Waiting:
             printk("Measuring modules...\n");
             measurementManager.state = CollectingModuleMeasurements;
@@ -348,6 +365,7 @@ static int __init connector_init_module (void)
 
     printk("Measurement Module Start\n");
 
+    measurementManager.state = Waiting;
     send_ready_signal();
 
     /*

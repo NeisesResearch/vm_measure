@@ -23,115 +23,51 @@ struct buffer {
     int size;
 };
 
-/*
-static void wait(void)
-{
-    int fd = open("/dev/uio0", O_RDWR);
-    int val;
-    int result = read(fd, &val, sizeof(val));
-    if(result < 0)
-    {
-        printk("Error: %s\n", strerror(errno));
-    }
-    else
-    {
-        printk("Back from waiting with val: %d\n", val);
-    }
-    close(fd);
-}
-
-static void emit(void)
-{
-    int fd = open("/dev/uio0", O_RDWR);
-    assert(fd >= 0);
-
-    char* connection;
-    if ((connection = mmap(NULL, 0x1000, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 * getpagesize())) == (void*) -1)
-    {
-        printk("mmap failed\n");
-        close(fd);
-    }
-
-    // emit signal
-    connection[0] = 1;
-
-    munmap(connection, 0x1000);
-    close(fd);
-}
-
-// must allocate dataport yourself
-static void read(char* dataport)
-{
-    int fd = open("/dev/uio0", O_RDWR);
-    assert(fd >= 0);
-
-    int length = 4096;
-    if ((dataport = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 * getpagesize())) == (void*) -1)
-    {
-        printk("mmap failed\n");
-    }
-    close(fd);
-}
-
-static void write(char* message)
-{
-    int fd = open("/dev/uio0", O_RDWR);
-    assert(fd >= 0);
-
-    char* dataport;
-    int length = 4096;
-    if ((dataport = mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 * getpagesize())) == (void*) -1)
-    {
-        printk("mmap failed\n");
-        close(fd);
-    }
-
-    int i=0;
-    char ch;
-    while ((ch = getchar()) != EOF && i < length-1)
-    {
-        dataport[i] = ch;
-        i++;
-    }
-    close(fd);
-
-}
-*/
-
-
 static int __init hello_init(void)
 {
-    /*
-    while(1)
+    struct module *mod;
+    struct module_layout myLayout;
+    int it = 0;
+
+    printk("\n==============================\n");
+    printk("Listing the loaded kernel modules...\n");
+
+//   mutex_lock(&module_mutex);
+    list_for_each_entry(mod, &THIS_MODULE->list, list)
     {
-        wait();
-        printk("got an event!\n");
+        // check range of first char
+        u8* u8Ptr = (u8*)mod->name;
+        u8 firstByte = u8Ptr[0];
+        if( 0x20 <= firstByte && firstByte <= 0x7F)
+        {
+            /*
+            for(it=0; it<32; it++)
+            {
+                printk("%x", u8Ptr[it]);
+            }
+            printk("\n");
+            */
+            printk("%s\n", mod->name);
+        }
+        else
+        {
+            printk("Found self\n");
+        }
 
-        struct module *mod;
-        struct module_layout myLayout;
-        int it = 0;
-
-        printk("\n==============================\n");
-        printk("Listing the loaded kernel modules...\n");
-
-    //   mutex_lock(&module_mutex);
-        list_for_each_entry(mod, &THIS_MODULE->list, list)
-                printk(KERN_INFO "%s\n", mod->name);
-                myLayout = mod->core_layout;
-                unsigned long* thisBase = (unsigned long*)myLayout.base;
-
-                for(it=0; it<myLayout.size / sizeof(unsigned long); it++)
-                {
-                    printk("%lu\n", thisBase[it]);
-                }
-    //    mutex_unlock(&module_mutex);
-
-
-        printk("\n==============================\n");
-
-        emit();
     }
-    */
+    /*
+            myLayout = mod->core_layout;
+            unsigned long* thisBase = (unsigned long*)myLayout.base;
+
+            for(it=0; it<myLayout.size / sizeof(unsigned long); it++)
+            {
+                printk("%lu\n", thisBase[it]);
+            }
+            */
+//    mutex_unlock(&module_mutex);
+
+
+    printk("\n==============================\n");
 
     return 0;
 }
