@@ -34,6 +34,25 @@ typedef struct connector_dev_node {
 connector_dev_node_t *devices[MAX_CONNECTOR_DEVICES];
 unsigned int current_free_dev = 0;
 
+enum MeasurementState
+{
+    Waiting,
+    CollectingModuleMeasurements,
+    SendingModuleMeasurements,
+    CollectingLinuxMeasurements,
+    SendingLinuxMeasurements
+};
+
+typedef struct MeasurementManager
+{
+    enum MeasurementState state;
+    uint32_t** measurements;
+    uint32_t memory;
+    uint32_t numMeasurements;
+} MeasurementManager;
+MeasurementManager measurementManager = { Waiting, NULL, 0 };
+
+u32* signoff = (u32*)"DEADBEEF";
 
 static void dataportRead(u32* result)
 {
@@ -46,15 +65,16 @@ static void dataportRead(u32* result)
     }
 }
 
-static void dataportPrintData(u32* input)
+static void dataportPrintData(void)
 {
-    // print 8 rows of 128
     int i;
     int j;
-    printk("Dataport contained:\n");
+    u32* input = kmalloc(4096, GFP_KERNEL);
+    dataportRead(input);
 
+    // print 8 rows of 128
+    printk("Dataport Contents:\n");
     u8* inputBytes = (u8*)input;
-
     for(i=0;i<32;i++)
     {
         u8* thisRow = kmalloc(129, GFP_KERNEL);
@@ -65,21 +85,21 @@ static void dataportPrintData(u32* input)
         thisRow[128] = '\0';
         printk("%s\n", (char*)thisRow);
     }
-
-    /*
-    for(i=0; i<1024; i++)
-    {
-        printk("%x", input[i]);
-        if(i % 128 == 0)
-        {
-            printk("\n");
-        }
-    }
-    */
+    kfree(input);
 }
-    
+
+static void send_ready_signal(void)
+{
+    uint32_t* event_bar = devices[0]->uio->mem[0].internal_addr;
+    writel(1, &event_bar[0]);
+}
+
 static void dataportWrite(u32* input, int length)
 {
+    if(length > 1024)
+    {
+        printk("dataportWrite: length too large: input truncated");
+    }
     int i;
     phys_addr_t internal_addr = devices[0]->uio->mem[1].internal_addr;
     for (i=0; i<length && i<1024; i++)
@@ -89,27 +109,64 @@ static void dataportWrite(u32* input, int length)
     }
 }
 
-/*
-static void dataportWait()
+
+// size in bytes
+static void sendNextModuleMeasurement(void)
 {
-    int i;
-    phys_addr_t internal_addr = devices[0]->uio->mem[0].internal_addr;
-    for (i=0; i<1024; i++)
+    u32* thisMeasurement = measurementManager.measurements[measurementManager.memory];
+    if(thisMeasurement == NULL)
     {
-        result[i] = readl(internal_addr);
-        internal_addr = (u32*)internal_addr + 1;
+        measurementManager.state = Waiting;
+        dataportWrite(signoff, 2);
     }
+    else
+    {
+        printk("Sending Module Measurement %d...\n", measurementManager.memory);
+        dataportWrite(measurementManager.measurements[measurementManager.memory], 64);
+        measurementManager.memory = measurementManager.memory + 1;
+    }
+    send_ready_signal();
 }
-*/
-
-
 
 static void measureModules(void)
 {
     printk("Got a measurement request...\n");
-    u32* dpData = kmalloc(4096, GFP_KERNEL);
-    dataportRead(dpData);
-    dataportPrintData(dpData);
+    //dataportPrintData();
+
+    /*
+    ** Assume there can be at most 100 modules
+    ** Assume no module has a longer name than 256 characters
+    ** :shrug:
+    */
+    measurementManager.measurements = kzalloc(100 * sizeof(uint32_t*), GFP_KERNEL);
+    measurementManager.numMeasurements = 0;
+    int moduleNameSize = 256;
+
+
+    struct module *mod;
+    struct module_layout myLayout;
+    int it = 0;
+//   mutex_lock(&module_mutex);
+    list_for_each_entry(mod, &THIS_MODULE->list, list)
+            printk(KERN_INFO, "%s\n", mod->name);
+            char* thisName = mod->name;
+            // for now, send only the name of the modules, padded with zeroes to 256 bytes
+            char* sendName = kmalloc(moduleNameSize, GFP_KERNEL);
+            for(it=0; it<strlen(thisName); it++)
+            {
+                sendName[it] = thisName[it];
+            }
+            for(it=strlen(thisName); it<moduleNameSize; it++)
+            {
+                sendName[it] = "0";
+            }
+            measurementManager.measurements[measurementManager.numMeasurements] = (u32*)sendName;
+            measurementManager.numMeasurements++;
+//    mutex_unlock(&module_mutex);
+
+    measurementManager.memory = 0;
+    measurementManager.state = SendingModuleMeasurements;
+    sendNextModuleMeasurement();
 }
 
 static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
@@ -125,8 +182,26 @@ static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
      * TODO: Currently avoiding IRQ count value - we might want to use it? */
     writel(0, &event_bar[1]);
 
-    // do the measurement
-    measureModules();
+
+    //printk("\nGot an event!\n");
+    switch(measurementManager.state)
+    {
+        case Waiting:
+            printk("Measuring modules...\n");
+            measurementManager.state = CollectingModuleMeasurements;
+            measureModules();
+            break;
+        case CollectingModuleMeasurements:
+            printk("Still measuring...\n");
+            break;
+        case SendingModuleMeasurements:
+            sendNextModuleMeasurement();
+            break;
+        case CollectingLinuxMeasurements:
+            break;
+        case SendingLinuxMeasurements:
+            break;
+    }
 
     return IRQ_HANDLED;
 }
@@ -267,12 +342,6 @@ static struct pci_driver connector_pci_driver = {
 };
 
 
-static void send_ready_signal(void)
-{
-    uint32_t* event_bar = devices[0]->uio->mem[0].internal_addr;
-    writel(1, &event_bar[0]);
-}
-
 static int __init connector_init_module (void)
 {
     int result = pci_register_driver(&connector_pci_driver);
@@ -288,7 +357,7 @@ static int __init connector_init_module (void)
 
     dataportRead(dpData);
 
-    dataportPrintData(dpData);
+    dataportPrintData();
 
     // build string to write
     u32* dpNewData = kmalloc(4096, GFP_KERNEL);
@@ -302,7 +371,7 @@ static int __init connector_init_module (void)
 
     dataportRead(dpData);
 
-    dataportPrintData(dpData);
+    dataportPrintData();
     */
 
     return result;
@@ -322,5 +391,4 @@ module_exit(connector_exit_module);
 
 MODULE_DEVICE_TABLE(pci, connector_pci_ids);
 MODULE_LICENSE("GPL v2");
-
 

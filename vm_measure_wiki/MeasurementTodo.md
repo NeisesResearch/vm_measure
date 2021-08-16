@@ -1,7 +1,8 @@
 - [x] Implement dataport data transfer
 - [x] Implement dataport signals
-- [ ] Collect measurement data
-- [ ] Chunk up measurement data
-- [ ] Send measurement data to CAmkES
-- [ ] Analyze measurement data in CAmkES
+- [x] Collect initial measurement data
+- [x] Chunk up initial measurement data
+- [x] Send initial measurement data to CAmkES- [x] Analyze initial measurement data in CAmkES
+- [ ] Determine final data to measure
+- [ ] Implement sending all data
 
