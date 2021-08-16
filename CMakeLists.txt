@@ -35,12 +35,12 @@ set(linux_symvers "${CAMKES_VM_LINUX_DIR}/linux_configs/4.9.y/64/Module.symvers"
 # Set the directory of our custom linux kernel
 set(linux_dir "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/linux-stable")
 
-# Add the external measure module project
-ExternalProject_Add(measure-module
+# Add a kernel module
+ExternalProject_Add(print-module
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/measure-module
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/print-module
     BUILD_ALWAYS ON
-    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/measure-module-stamp
+    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/print-module-stamp
     EXCLUDE_FROM_ALL
     INSTALL_COMMAND ""
     CMAKE_ARGS
@@ -52,12 +52,12 @@ ExternalProject_Add(measure-module
 # Add our module binary to the overlay
 # The number at this time happens to be 275.
 AddExternalProjFilesToOverlay(
-    measure-module
-    ${CMAKE_CURRENT_BINARY_DIR}/measure-module
+    print-module
+    ${CMAKE_CURRENT_BINARY_DIR}/print-module
     vm-overlay
     "lib/modules/4.9.275/kernel/drivers/vmm"
     FILES
-    measure.ko
+    print.ko
 )
 
 # Add another module

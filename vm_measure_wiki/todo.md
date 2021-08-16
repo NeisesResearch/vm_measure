@@ -4,6 +4,7 @@
 - [x] Implement kernel module measurement
 - [x] Implement module-CAmkES communication
 - [x] Implement simple measurement
+- [ ] Implement rodata measurement
 - [ ] Implement module data analyzer
 - [ ] Implement heartbeat
 - [ ] Implement module-removal signal
