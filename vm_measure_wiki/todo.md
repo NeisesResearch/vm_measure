@@ -5,7 +5,7 @@
 - [x] Implement module-CAmkES communication
 - [x] Implement module name measurement
 - [x] Implement Addition Attack
-- [ ] Implement module rodata measurement
+- [x] Implement module rodata measurement
 - [ ] Implement heartbeat
 - [ ] Implement module-removal signal
 - [ ] Implement module memory lock

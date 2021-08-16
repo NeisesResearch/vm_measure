@@ -44,16 +44,77 @@ enum MeasurementState
     SendingLinuxMeasurements
 };
 
+struct ModuleMeasurement
+{
+    uint8_t* name;
+    uint8_t* rodata;
+    uint32_t rosize;
+};
+
 typedef struct MeasurementManager
 {
     enum MeasurementState state;
-    uint32_t** measurements;
+    struct ModuleMeasurement** measurements;
+    uint8_t numMeasurements;
+    uint8_t** payloads;
+    uint8_t numPayloads;
     uint32_t memory;
-    uint32_t numMeasurements;
 } MeasurementManager;
-MeasurementManager measurementManager = { Waiting, NULL, 0 };
+MeasurementManager measurementManager = { Waiting, NULL, 0, 0, 0 };
 
-u32* signoff = (u32*)"DEADBEEF";
+static void resetMeasurementManager(void)
+{
+    int i;
+    for(i=0; i<measurementManager.numMeasurements; i++)
+    {
+        kfree(measurementManager.measurements[i]);
+    }
+}
+
+static void buildModulePayloads(void)
+{
+    int i;
+    int j;
+    int k;
+    // can have 100 payloads :shrug:
+    measurementManager.payloads = kzalloc(100 * sizeof(uint8_t*), GFP_KERNEL);
+    for(i=0; i<measurementManager.numMeasurements; i++)
+    {
+        struct ModuleMeasurement* thisMsmt = measurementManager.measurements[i];
+
+        // construct header payload
+        uint8_t* thisHeader = kzalloc(4096, GFP_KERNEL);
+        // set the type to "module"
+        thisHeader[0] = 1;
+        // calculate num payloads
+        uint8_t numPayloads = 0;
+        while( 4096 * numPayloads < thisMsmt->rosize )
+        {
+            numPayloads++;
+        }
+        thisHeader[1] = numPayloads;
+        for(j=2; j<258; j++)
+        {
+            thisHeader[j] = thisMsmt->name[j-2];
+        }
+        measurementManager.payloads[measurementManager.memory] = thisHeader;
+        measurementManager.memory = measurementManager.memory + 1;
+
+        // construct data payloads
+        for(j=0; j<numPayloads; j++)
+        {
+            uint8_t* thisPayload = kzalloc(4096, GFP_KERNEL);
+            for(k=0; k<4096; k++)
+            {
+                thisPayload[k] = thisMsmt->rodata[4096*j + k];
+            }
+            measurementManager.payloads[measurementManager.memory] = thisPayload;
+            measurementManager.memory = measurementManager.memory + 1;
+        }
+    }
+}
+
+u8* signoff = (u8*)"DEADBEEF";
 
 static void dataportRead(u32* result)
 {
@@ -96,37 +157,38 @@ static void send_ready_signal(void)
     writel(1, &event_bar[0]);
 }
 
-static void dataportWrite(u32* input, int length)
+static void dataportWrite(uint8_t* input, int length)
 {
     int i;
     void* internal_addr;
-    if(length > 1024)
+    if(4096 < length)
     {
         printk("dataportWrite: length too large: input truncated");
     }
     internal_addr = devices[0]->uio->mem[1].internal_addr;
-    for (i=0; i<length && i<1024; i++)
+    for (i=0; i<length; i++)
     {
-        writel(input[i], internal_addr);
-        internal_addr = (u32*)internal_addr + 1;
+        writeb(input[i], internal_addr);
+        internal_addr = (u8*)internal_addr + 1;
     }
 }
 
-
 // size in bytes
-static void sendNextModuleMeasurement(void)
+static void sendNextPayload(void)
 {
-    u32* thisMeasurement = measurementManager.measurements[measurementManager.memory];
-    if(thisMeasurement == NULL)
+    int i;
+    uint8_t* thisPayload = measurementManager.payloads[measurementManager.memory];
+    if(thisPayload == NULL)
     {
-        printk("Sending Signoff...\n");
+        printk("send signoff\n");
         measurementManager.state = Waiting;
-        dataportWrite(signoff, 2);
+        resetMeasurementManager();
+        dataportWrite(signoff, 8);
     }
     else
     {
-        printk("Sending Module Measurement %d...\n", measurementManager.memory);
-        dataportWrite(measurementManager.measurements[measurementManager.memory], 64);
+        printk("send payload %d\n", measurementManager.memory);
+        dataportWrite(thisPayload, 4096);
         measurementManager.memory = measurementManager.memory + 1;
     }
     send_ready_signal();
@@ -135,7 +197,6 @@ static void sendNextModuleMeasurement(void)
 static void measureModules(void)
 {
     struct module *mod;
-    struct module_layout myLayout;
     int it = 0;
 
     printk("Got a measurement request...\n");
@@ -145,43 +206,65 @@ static void measureModules(void)
     ** Assume no module has a name longer than 256 characters
     ** :shrug:
     */
-    measurementManager.measurements = kzalloc(100 * sizeof(uint32_t*), GFP_KERNEL);
+    measurementManager.measurements = kzalloc(100 * sizeof(struct ModuleMeasurement*), GFP_KERNEL);
     measurementManager.numMeasurements = 0;
-
 
 //   mutex_lock(&module_mutex);
     //printk("my name is: %s\n", &THIS_MODULE->name);
     list_for_each_entry(mod, &THIS_MODULE->list, list)
     {
         char* thisName;
+        struct ModuleMeasurement* msmt = kmalloc(sizeof(struct ModuleMeasurement), GFP_KERNEL);
         u8 firstByte = ((u8*)mod->name)[0];
         if( 0x20 <= firstByte && firstByte <= 0x7F )
         {
-            //printk("%s\n", mod->name);
+            // copy away these module data
             thisName = mod->name;
+            msmt->rosize = mod->core_layout.ro_size;
+            msmt->rodata = kzalloc(msmt->rosize, GFP_KERNEL);
+
+            int i;
+            uint8_t* rodataPtr = (uint8_t*)mod->core_layout.base;
+            rodataPtr += mod->core_layout.text_size;
+
+            for(i=0;i<msmt->rosize;i++)
+            {
+                msmt->rodata[i] = rodataPtr[i];
+            }
         }
         else
         {
+            // prepare to send the signoff
             thisName = "measurement";
+            msmt->rodata = NULL;
+            msmt->rosize = 0;
         }
-        // for now, send only the name of the modules, padded with zeroes to 256 bytes
-        char* sendName = kmalloc(MODULE_NAME_LEN, GFP_KERNEL);
+
+        // pad the module name for sending
+        // TODO change this to zalloc
+        uint8_t* sendName = kzalloc(256, GFP_KERNEL);
         for(it=0; it<strlen(thisName); it++)
         {
             sendName[it] = thisName[it];
         }
-        for(it=strlen(thisName); it<MODULE_NAME_LEN; it++)
+        /*
+        for(it=strlen(thisName); it<256; it++)
         {
             sendName[it] = "0";
         }
-        measurementManager.measurements[measurementManager.numMeasurements] = (u32*)sendName;
+        */
+        msmt->name = sendName;
+
+        measurementManager.measurements[measurementManager.numMeasurements] = msmt;
         measurementManager.numMeasurements++;
     }
 //    mutex_unlock(&module_mutex);
 
-    measurementManager.memory = 0;
     measurementManager.state = SendingModuleMeasurements;
-    sendNextModuleMeasurement();
+    measurementManager.memory = 0;
+    buildModulePayloads();
+    measurementManager.memory = 0;
+    sendNextPayload();
 }
 
 static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
@@ -212,7 +295,7 @@ static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
             printk("Still measuring...\n");
             break;
         case SendingModuleMeasurements:
-            sendNextModuleMeasurement();
+            sendNextPayload();
             break;
         case CollectingLinuxMeasurements:
             break;

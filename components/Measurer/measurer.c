@@ -7,6 +7,13 @@
 #include <string.h>
 #include <camkes.h>
 
+typedef struct ModuleMeasurement
+{
+    uint8_t* name;
+    uint8_t* rodata;
+    uint32_t rosize;
+}ModuleMeasurement;
+
 int run(void)
 {
     memset(dest, '0', 4096);
@@ -19,43 +26,53 @@ int run(void)
 
     printf("\n\nMeasurement module ready!\n");
 
+
+    // prepare for a measurement
+    ModuleMeasurement** measurements = malloc(100 * sizeof(ModuleMeasurement*));
+    int numMeasurements = 0;
     // request a measurement
     done_emit_underlying();
-
-    // grab the entire measurement
-    uint32_t** theseMeasurements = malloc(100 * sizeof(uint32_t*));
-    int numMeasurements = 0;
-    // this is MODULE_NAME_LEN as defined in module.h
-    int moduleNameSize = 256;
-
-    printf("Requesting measurements\n");
     while (1) {
         ready_wait();
-        uint32_t* thisMeasurement = malloc(moduleNameSize);
-        uint32_t* thisPtr = (uint32_t*)dest;
-        for(int i=0; i<moduleNameSize/4; i++)
-        {
-            thisMeasurement[i] = thisPtr[i];
-        }
+        ModuleMeasurement* thisMeasurement = malloc(sizeof(ModuleMeasurement));
 
         // check for signoff
-        char* thisHeader = malloc(9);
-        char* thisCharPtr = (char*)thisMeasurement;
+        char* thisMagicWord = malloc(9);
         for(int i=0; i<8; i++)
         {
-            thisHeader[i] = thisCharPtr[i];
+            thisMagicWord[i] = ((char*)dest)[i];
         }
-        thisHeader[8] = '\0';
-
-        if(strcmp(thisHeader, "DEADBEEF") == 0)
+        thisMagicWord[8] = '\0';
+        if(strcmp(thisMagicWord, "DEADBEEF") == 0)
         {
             printf("Got signoff\n");
-            // that was the signoff
             break;
         }
-        printf("Got a measurement\n");
 
-        theseMeasurements[numMeasurements] = thisMeasurement;
+        printf("Receiving a module measurement\n");
+        //grab the header data
+        uint8_t msmtType = ((uint8_t*) dest)[0];
+        uint8_t numPayloads = ((uint8_t*) dest)[1];
+        uint8_t* name = malloc(256);
+        for(int j=0; j<256; j++)
+        {
+            name[j] = ((uint8_t*) dest)[j+2];
+        }
+        thisMeasurement->name = name;
+        thisMeasurement->rosize = 4096 * numPayloads;
+        uint8_t* rodata = malloc(thisMeasurement->rosize);
+        for(int j=0; j<numPayloads; j++)
+        {
+            done_emit_underlying();
+            ready_wait();
+            printf("Receiving a payload\n");
+            for(int k=0; k<4096; k++)
+            {
+                rodata[4096*j + k] = ((uint8_t*)dest)[k];
+            }
+        }
+
+        measurements[numMeasurements] = thisMeasurement;
         numMeasurements++;
         done_emit_underlying();
     }
@@ -63,6 +80,8 @@ int run(void)
     printf("Printing all measurements\n");
     for(int i=0; i<numMeasurements; i++)
     {
+        printf("Module name: %s\n", measurements[i]->name);
+        /*
         char* headerPtr = (char*)theseMeasurements[i];
         char* header = malloc(32);
         printf("Measurement %d: ", i);
@@ -76,6 +95,7 @@ int run(void)
             //header[j] = headerPtr[j];
         }
         printf("\n");
+        */
         /*
         header[30] = '\0';
         header[31] = '\0';
