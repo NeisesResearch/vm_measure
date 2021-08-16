@@ -3,9 +3,9 @@
 ### Implementation todo
 - [x] Implement kernel module measurement
 - [x] Implement module-CAmkES communication
-- [x] Implement simple measurement
-- [ ] Implement rodata measurement
-- [ ] Implement module data analyzer
+- [x] Implement module name measurement
+- [x] Implement Addition Attack
+- [ ] Implement module rodata measurement
 - [ ] Implement heartbeat
 - [ ] Implement module-removal signal
 - [ ] Implement module memory lock
@@ -16,7 +16,6 @@
 - [ ] Implement linux reset
 - [ ] Ensure access restriction to /dev/uio0
 - [ ] Implement Linux binary measurement
-- [ ] Implement Addition Attack
 - [ ] Implement Impersonation Attack
 - [ ] Cleanup Warnings Backlog
 
