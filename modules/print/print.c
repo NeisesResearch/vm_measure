@@ -26,8 +26,6 @@ struct buffer {
 static int __init hello_init(void)
 {
     struct module *mod;
-    struct module_layout myLayout;
-    int it = 0;
 
     printk("\n==============================\n");
     printk("Listing the loaded kernel modules...\n");

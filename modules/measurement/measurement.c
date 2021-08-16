@@ -76,6 +76,7 @@ static void buildModulePayloads(void)
     int i;
     int j;
     int k;
+    uint8_t numPayloads = 0;
     // can have 100 payloads :shrug:
     measurementManager.payloads = kzalloc(100 * sizeof(uint8_t*), GFP_KERNEL);
     for(i=0; i<measurementManager.numMeasurements; i++)
@@ -87,7 +88,6 @@ static void buildModulePayloads(void)
         // set the type to "module"
         thisHeader[0] = 1;
         // calculate num payloads
-        uint8_t numPayloads = 0;
         while( 4096 * numPayloads < thisMsmt->rosize )
         {
             numPayloads++;
@@ -116,6 +116,7 @@ static void buildModulePayloads(void)
 
 u8* signoff = (u8*)"DEADBEEF";
 
+/*
 static void dataportRead(u32* result)
 {
     int i;
@@ -150,6 +151,7 @@ static void dataportPrintData(void)
     }
     kfree(input);
 }
+*/
 
 static void send_ready_signal(void)
 {
@@ -176,7 +178,6 @@ static void dataportWrite(uint8_t* input, int length)
 // size in bytes
 static void sendNextPayload(void)
 {
-    int i;
     uint8_t* thisPayload = measurementManager.payloads[measurementManager.memory];
     if(thisPayload == NULL)
     {
@@ -214,7 +215,9 @@ static void measureModules(void)
     list_for_each_entry(mod, &THIS_MODULE->list, list)
     {
         char* thisName;
+        uint8_t* sendName = kzalloc(256, GFP_KERNEL);
         struct ModuleMeasurement* msmt = kmalloc(sizeof(struct ModuleMeasurement), GFP_KERNEL);
+        uint8_t* rodataPtr = (uint8_t*)mod->core_layout.base;
         u8 firstByte = ((u8*)mod->name)[0];
         if( 0x20 <= firstByte && firstByte <= 0x7F )
         {
@@ -223,13 +226,10 @@ static void measureModules(void)
             msmt->rosize = mod->core_layout.ro_size;
             msmt->rodata = kzalloc(msmt->rosize, GFP_KERNEL);
 
-            int i;
-            uint8_t* rodataPtr = (uint8_t*)mod->core_layout.base;
             rodataPtr += mod->core_layout.text_size;
-
-            for(i=0;i<msmt->rosize;i++)
+            for(it=0;it<msmt->rosize;it++)
             {
-                msmt->rodata[i] = rodataPtr[i];
+                msmt->rodata[it] = rodataPtr[it];
             }
         }
         else
@@ -242,7 +242,6 @@ static void measureModules(void)
 
         // pad the module name for sending
         // TODO change this to zalloc
-        uint8_t* sendName = kzalloc(256, GFP_KERNEL);
         for(it=0; it<strlen(thisName); it++)
         {
             sendName[it] = thisName[it];

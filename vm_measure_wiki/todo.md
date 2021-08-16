@@ -17,7 +17,7 @@
 - [ ] Ensure access restriction to /dev/uio0
 - [ ] Implement Linux binary measurement
 - [ ] Implement Impersonation Attack
-- [ ] Cleanup Warnings Backlog
+- [x] Cleanup Warnings Backlog
 
 ### Documentation todo
 - [x] Create trust argument outline
