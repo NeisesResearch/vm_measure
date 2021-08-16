@@ -76,7 +76,7 @@ static void buildModulePayloads(void)
     int i;
     int j;
     int k;
-    uint8_t numPayloads = 0;
+    uint8_t numPayloads;
     // can have 100 payloads :shrug:
     measurementManager.payloads = kzalloc(100 * sizeof(uint8_t*), GFP_KERNEL);
     for(i=0; i<measurementManager.numMeasurements; i++)
@@ -88,6 +88,7 @@ static void buildModulePayloads(void)
         // set the type to "module"
         thisHeader[0] = 1;
         // calculate num payloads
+        numPayloads = 0;
         while( 4096 * numPayloads < thisMsmt->rosize )
         {
             numPayloads++;
