@@ -36,11 +36,11 @@ set(linux_symvers "${CAMKES_VM_LINUX_DIR}/linux_configs/4.9.y/64/Module.symvers"
 set(linux_dir "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/linux-stable")
 
 # Add a kernel module
-ExternalProject_Add(print-module
+ExternalProject_Add(good-module
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/print-module
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/good-module
     BUILD_ALWAYS ON
-    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/print-module-stamp
+    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/good-module-stamp
     EXCLUDE_FROM_ALL
     INSTALL_COMMAND ""
     CMAKE_ARGS
@@ -52,12 +52,12 @@ ExternalProject_Add(print-module
 # Add our module binary to the overlay
 # The number at this time happens to be 275.
 AddExternalProjFilesToOverlay(
-    print-module
-    ${CMAKE_CURRENT_BINARY_DIR}/print-module
+    good-module
+    ${CMAKE_CURRENT_BINARY_DIR}/good-module
     vm-overlay
     "lib/modules/4.9.275/kernel/drivers/vmm"
     FILES
-    print.ko
+    good.ko
 )
 
 # Add another module

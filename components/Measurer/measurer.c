@@ -60,32 +60,35 @@ void checkDigest(HashedModuleMeasurement* msmt)
         printf("%02hhx", msmt->rodataDigest[i]);
     }
     printf("\n");
-    if(strcmp(msmt->name, "poison")==0)
-    {
-        uint8_t numMatchingBytes = 0;
-        for(int i=0; i<32; i++)
-        {
-            if(msmt->rodataDigest[i] == poison[i])
-            {
-                numMatchingBytes++;
-            }
-        }
-        if(numMatchingBytes == 32)
-        {
-            printf("This rodata digest matches what was expected.\n");
-        }
-        else
-        {
-            printf("This rodata digest is not what was expected.\n");
-        }
-    }
-    else if(strcmp(msmt->name, "measurement")==0)
+    if(strcmp(msmt->name, "measurement")==0)
     {
         printf("This is a digest over an empty measurement.\n");
     }
     else
     {
-        printf("This rodata digest fails to match any registered digest.\n");
+        // try to match against all registered digests
+        bool isDigestRegistered = false;
+        for(int i=0; i<digestRegistry.numEntries; i++)
+        {
+            uint8_t numMatchingBytes = 0;
+            for(int j=0; j<32; j++)
+            {
+                if(msmt->rodataDigest[j] == digestRegistry.registry[i][j])
+                {
+                    numMatchingBytes++;
+                }
+            }
+            if(numMatchingBytes == 32)
+            {
+                printf("This rodata digest was previously registered as %s.\n", digestRegistry.names[i]);
+                isDigestRegistered = true;
+                break;
+            }
+        }
+        if(!isDigestRegistered)
+        {
+            printf("This rodata digest is not recognized.\n");
+        }
     }
 }
 
@@ -122,8 +125,10 @@ int run(void)
 {
     memset(dest, '0', 4096);
     printf("Dataport reset!\n");
+    //strcpy(dest, "This is a crossvm dataport test string");
 
-    strcpy(dest, "This is a crossvm dataport test string");
+    // register any digests
+    registerDigest(goodDigest1, "Good Digest #1");
 
     // wait until the Linux kernel module is ready
     ready_wait();

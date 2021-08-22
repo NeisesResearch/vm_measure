@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: BSD-2-Clause
 #
 
+insmod /lib/modules/4.9.275/kernel/drivers/vmm/good.ko
 insmod /lib/modules/4.9.275/kernel/drivers/vmm/poison.ko
 insmod /lib/modules/4.9.275/kernel/drivers/vmm/measurement.ko
-#insmod /lib/modules/4.9.275/kernel/drivers/vmm/print.ko
 
