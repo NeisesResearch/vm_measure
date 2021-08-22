@@ -137,70 +137,13 @@ static void buildModulePayloads(void)
             }
             else
             {
-                // somewhere between 4150 and 4200 :shrug:
-                int m;
-                // start at 4042 and search downward
-                // max_m bounded in [700, 725]
-                // TODO why?
-                int mask_size = 698;
-                uint8_t* maskedData = kzalloc(mask_size, GFP_KERNEL);
-                for(m=0; m<mask_size; m++)
-                {
-                    maskedData[m] = thisMsmt->rodata[4176+m];
-                    thisMsmt->rodata[4176+m] = '\0';
-                }
                 do_sha256(thisMsmt->rodata, thisMsmt->rosize, digest);
-
-
-                printk("Printing %d masked rodata bytes from %s module\n", mask_size, thisMsmt->name);
-                int numRows = 0;
-                int rowSize = 64;
-                while(rowSize * numRows < mask_size)
-                {
-                    numRows++;
-                }
-
-                int l;
-                for(k=0; k<numRows; k++)
-                {
-                    char* thisRow = kzalloc(2*rowSize, GFP_KERNEL);
-                    for(l=0; l<rowSize; l++)
-                    {
-                        uint8_t thisByte = maskedData[k*rowSize + l];
-                        if(0x20 < thisByte && thisByte < 0x7f)
-                        {
-                            sprintf(thisRow+l*2, "%02hhx", maskedData[k*rowSize + l]);
-                            //sprintf(thisRow+l*2, "%c ", maskedData[k*rowSize + l]);
-                        }
-                        else
-                        {
-                            sprintf(thisRow+l*2, "%02hhx", maskedData[k*rowSize + l]);
-                        }
-                        //thisRow[l] = thisMsmt->rodata[k*rowSize + l];
-                    }
-                    printk("%s\n", thisRow);
-                    kfree(thisRow);
-                }
-
             }
-
-
-
-
-
-
 
             // load the measurement into the payloads array
             strcpy(measurementManager.payloads[i] + 88*j, thisMsmt->name);
             memcpy(measurementManager.payloads[i] + 88*j + 56, digest, 32);
             kfree(digest);
-            /*
-            for(k=0; k<256; k++)
-            {
-                measurementManager.payloads[i][512*j + k] = thisMsmt->name[k];
-                measurementManager.payloads[i][512*j + k+256] = digest[k];
-            }
-            */
         }
     }
 }
@@ -309,7 +252,9 @@ static void measureModules(void)
             msmt->rosize = mod->core_layout.ro_size;
             msmt->rodata = kzalloc(msmt->rosize, GFP_KERNEL);
 
-            rodataPtr += mod->core_layout.text_size;
+            printk("size: %d\ntext_size %d\nro_size %d\n", mod->core_layout.size, mod->core_layout.text_size,mod->core_layout.ro_size);
+
+            //rodataPtr += mod->core_layout.text_size;
             for(it=0;it<msmt->rosize;it++)
             {
                 msmt->rodata[it] = rodataPtr[it];
