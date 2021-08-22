@@ -81,7 +81,7 @@ void checkDigest(HashedModuleMeasurement* msmt)
     }
     else if(strcmp(msmt->name, "measurement")==0)
     {
-        printf("This rodata digest is the result of hashing an empty input.\n");
+        printf("This is a digest over an empty measurement.\n");
     }
     else
     {
