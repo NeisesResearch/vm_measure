@@ -8,7 +8,7 @@
 #include <asm/io.h>
 
 static int __init hello_init(void) {
-    printk("\n==============================\n");
+    printk("==============================\n");
     printk("Greetings");
     printk("\n==============================\n");
     return 0;

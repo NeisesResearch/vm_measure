@@ -7,12 +7,77 @@
 #include <string.h>
 #include <camkes.h>
 
-typedef struct ModuleMeasurement
+typedef struct HashedModuleMeasurement
 {
-    uint8_t* name;
-    uint8_t* rodata;
-    uint32_t rosize;
-}ModuleMeasurement;
+    char* name;
+    uint8_t* rodataDigest;
+}HashedModuleMeasurement;
+
+enum MeasurementHeader
+{
+    ModulePayload,
+    MeasurementModulePayload,
+    Signoff
+};
+
+enum MeasurementHeader checkHeader(uint8_t* msmt, int headerNum)
+{
+    enum MeasurementHeader result;
+    if(strcmp(msmt + 88*headerNum, "DEADBEEF") == 0)
+    {
+        result = Signoff;
+    }
+    else if(strcmp(msmt + 88*headerNum, "measurement") == 0)
+    {
+        result = ModulePayload;
+        //result = MeasurementModulePayload;
+    }
+    else
+    {
+        result = ModulePayload;
+    }
+    return result;
+}
+
+void printMeasurement(HashedModuleMeasurement* msmt)
+{
+    printf("Module Name: %s\n", msmt->name);
+    printf("Module Rodata Digest: ");
+    for(int i=0; i<32; i++)
+    {
+        printf("%02hhx", msmt->rodataDigest[i]);
+    }
+    printf("\n");
+}
+
+void printPayload(uint8_t* payload)
+{
+    for(int i=0; i<4096; i++)
+    {
+        if(i%88==0)
+        {
+            printf("\n");
+        }
+        uint8_t thisByte = payload[i];
+        if( (i%88) < 56 )
+        {
+            if( 0x20 < thisByte && thisByte < 0x7f)
+            {
+                printf("%c", thisByte);
+            }
+            else
+            {
+                printf("-");
+            }
+        }
+        else
+        {
+            //printf("-");
+            printf("%02hhx", thisByte);
+        }
+    }
+    printf("\n");
+}
 
 int run(void)
 {
@@ -24,85 +89,86 @@ int run(void)
     // wait until the Linux kernel module is ready
     ready_wait();
 
-    printf("\n\nMeasurement module ready!\n");
+    printf("Ready Signal Received\n");
 
 
-    // prepare for a measurement
-    ModuleMeasurement** measurements = malloc(100 * sizeof(ModuleMeasurement*));
+    // prepare for a full payload of measurements
+    HashedModuleMeasurement** measurements = malloc(46 * sizeof(HashedModuleMeasurement*));
     int numMeasurements = 0;
     // request a measurement
+    printf("Request Measurement\n");
     done_emit_underlying();
     while (1) {
         ready_wait();
-        ModuleMeasurement* thisMeasurement = malloc(sizeof(ModuleMeasurement));
+        printf("Grab payload\n");
+        uint8_t* payload = malloc(4096);
+        memcpy((void*)payload, dest, 4096);
 
-        // check for signoff
-        char* thisMagicWord = malloc(9);
-        for(int i=0; i<8; i++)
-        {
-            thisMagicWord[i] = ((char*)dest)[i];
-        }
-        thisMagicWord[8] = '\0';
-        if(strcmp(thisMagicWord, "DEADBEEF") == 0)
-        {
-            printf("Got signoff\n");
-            break;
-        }
+        //printPayload(payload);
 
-        printf("Receiving a module measurement\n");
-        //grab the header data
-        uint8_t msmtType = ((uint8_t*) dest)[0];
-        uint8_t numPayloads = ((uint8_t*) dest)[1];
-        uint8_t* name = malloc(256);
-        for(int j=0; j<256; j++)
+
+        // Grab the first 8 measurements from the payload
+        HashedModuleMeasurement* thisMsmt = NULL;
+        char* namePtr = NULL;
+        uint8_t* rodataDigestPtr = NULL;
+        enum MeasurementHeader currentHeader;
+        bool gotSignOff = false;
+        for(int i=0; i<46; i++)
         {
-            name[j] = ((uint8_t*) dest)[j+2];
-        }
-        thisMeasurement->name = name;
-        thisMeasurement->rosize = 4096 * numPayloads;
-        uint8_t* rodata = malloc(thisMeasurement->rosize);
-        for(int j=0; j<numPayloads; j++)
-        {
-            done_emit_underlying();
-            ready_wait();
-            printf("Receiving a payload\n");
-            for(int k=0; k<4096; k++)
+            currentHeader = checkHeader(payload, i);
+            switch(currentHeader)
             {
-                rodata[4096*j + k] = ((uint8_t*)dest)[k];
+                case Signoff:
+                    fprintf(stderr, "Got Sign-Off. Breaking...\n");
+                    gotSignOff = true;
+                    break;
+                case MeasurementModulePayload:
+                    fprintf(stderr, "Got Measurement-Module Measurement\n");
+                    numMeasurements++;
+                    break;
+                case ModulePayload:
+                    fprintf(stderr, "Got Module Measurement\n", i);
+                    thisMsmt = malloc(1 * sizeof(HashedModuleMeasurement));
+                    namePtr = malloc(56 * sizeof(char));
+                    rodataDigestPtr = malloc(32 * sizeof(uint8_t));
+                    memcpy(namePtr,         payload + 88*i,      56);
+                    memcpy(rodataDigestPtr, payload + 88*i + 56, 56);
+                    thisMsmt->name = namePtr;
+                    thisMsmt->rodataDigest = rodataDigestPtr;
+                    measurements[numMeasurements] = thisMsmt;
+                    numMeasurements++;
+                    break;
+                default:
+                    fprintf(stderr, "Went to default. Shouldn't be here...\n");
+                    break;
             }
-        }
-
-        measurements[numMeasurements] = thisMeasurement;
-        numMeasurements++;
-        done_emit_underlying();
-    }
-
-    printf("Printing all measurements\n");
-    for(int i=0; i<numMeasurements; i++)
-    {
-        printf("Module name: %s\n", measurements[i]->name);
-        /*
-        char* headerPtr = (char*)theseMeasurements[i];
-        char* header = malloc(32);
-        printf("Measurement %d: ", i);
-        for(int j=0; j<32; j++)
-        {
-            if(((uint8_t*)headerPtr)[j] == 0x98)
+            if(gotSignOff)
             {
                 break;
             }
-            printf("%c", headerPtr[j]);
-            //header[j] = headerPtr[j];
         }
-        printf("\n");
-        */
-        /*
-        header[30] = '\0';
-        header[31] = '\0';
-        printf("%s \n", header);
-        */
+
+        free(payload);
+        payload = NULL;
+
+        if(gotSignOff)
+        {
+            break;
+        }
+        else
+        {
+            // signal that we're ready for a new payload
+            done_emit_underlying();
+        }
     }
 
-    printf("Finished\n");
+    printf("Printing all measurements\n");
+    fprintf(stderr,"============================================================\n");
+    for(int i=0; i<numMeasurements; i++)
+    {
+        printMeasurement(measurements[i]);
+    }
+    fprintf(stderr,"============================================================\n");
+    fprintf(stderr,"Finished\n");
     return 0;
 }

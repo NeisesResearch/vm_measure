@@ -17,6 +17,7 @@
 #include <linux/pci_ids.h>
 #include <linux/uio_driver.h>
 #include <asm/io.h>
+#include "sha.c"
 
 /* This is an 'abitrary' custom device id we use to match on our dataports
  * pci driver */
@@ -34,6 +35,8 @@ typedef struct connector_dev_node {
 connector_dev_node_t *devices[MAX_CONNECTOR_DEVICES];
 unsigned int current_free_dev = 0;
 
+u8* signoff = (u8*)"DEADBEEF";
+
 enum MeasurementState
 {
     Initing,
@@ -46,7 +49,7 @@ enum MeasurementState
 
 struct ModuleMeasurement
 {
-    uint8_t* name;
+    uint8_t name[256];
     uint8_t* rodata;
     uint32_t rosize;
 };
@@ -58,7 +61,6 @@ typedef struct MeasurementManager
     uint8_t numMeasurements;
     uint8_t** payloads;
     uint8_t numPayloads;
-    uint32_t memory;
 } MeasurementManager;
 MeasurementManager measurementManager = { Waiting, NULL, 0, 0, 0 };
 
@@ -67,55 +69,142 @@ static void resetMeasurementManager(void)
     int i;
     for(i=0; i<measurementManager.numMeasurements; i++)
     {
+        kfree(measurementManager.measurements[i]->rodata);
+        measurementManager.measurements[i]->rodata = NULL;
         kfree(measurementManager.measurements[i]);
+        measurementManager.measurements[i] = NULL;
     }
+    for(i=0; i<measurementManager.numPayloads; i++)
+    {
+        kfree(measurementManager.payloads[i]);
+        measurementManager.payloads[i] = NULL;
+    }
+    kfree(measurementManager.measurements);
+    measurementManager.measurements = NULL;
+    kfree(measurementManager.payloads);
+    measurementManager.payloads = NULL;
 }
 
+/*
+** A 4096-byte payload is a sequence of 46 module measurements
+** each measurement is 88 bytes
+** - 56 bytes for the module name (as defined as MODULE_NAME_LEN in module.h)
+** - 32 bytes for a SHA256 hash digest
+*/
 static void buildModulePayloads(void)
 {
     int i;
     int j;
     int k;
-    uint8_t numPayloads;
+    measurementManager.numPayloads = 0;
     // can have 100 payloads :shrug:
     measurementManager.payloads = kzalloc(100 * sizeof(uint8_t*), GFP_KERNEL);
-    for(i=0; i<measurementManager.numMeasurements; i++)
+
+    // we can put 8 hashed measurements into each payload
+    while(measurementManager.numPayloads*14 < measurementManager.numMeasurements)
     {
-        struct ModuleMeasurement* thisMsmt = measurementManager.measurements[i];
+        measurementManager.payloads[measurementManager.numPayloads] = kzalloc(4096, GFP_KERNEL);
+        measurementManager.numPayloads++;
+    }
 
-        // construct header payload
-        uint8_t* thisHeader = kzalloc(4096, GFP_KERNEL);
-        // set the type to "module"
-        thisHeader[0] = 1;
-        // calculate num payloads
-        numPayloads = 0;
-        while( 4096 * numPayloads < thisMsmt->rosize )
+    for(i=0; i<measurementManager.numPayloads; i++)
+    {
+        for(j=0; j<46; j++)
         {
-            numPayloads++;
-        }
-        thisHeader[1] = numPayloads;
-        for(j=2; j<258; j++)
-        {
-            thisHeader[j] = thisMsmt->name[j-2];
-        }
-        measurementManager.payloads[measurementManager.memory] = thisHeader;
-        measurementManager.memory = measurementManager.memory + 1;
-
-        // construct data payloads
-        for(j=0; j<numPayloads; j++)
-        {
-            uint8_t* thisPayload = kzalloc(4096, GFP_KERNEL);
-            for(k=0; k<4096; k++)
+            unsigned char *digest;
+            struct ModuleMeasurement* thisMsmt = measurementManager.measurements[46*i + j];
+            
+            // sign off if necessary
+            if(thisMsmt == NULL)
             {
-                thisPayload[k] = thisMsmt->rodata[4096*j + k];
+                printk("Built all measurements. Add sign-off.\n");
+                printk("Module name len is %lu\n", MODULE_NAME_LEN);
+                strcpy(measurementManager.payloads[i] + 88*j, signoff);
+                break;
             }
-            measurementManager.payloads[measurementManager.memory] = thisPayload;
-            measurementManager.memory = measurementManager.memory + 1;
+
+            printk("Computing hash for %s module\n", thisMsmt->name);
+            // compute the hash digest of the rodata
+            digest = kzalloc(32, GFP_KERNEL);
+            if(digest < 0)
+            {
+                printk("Digest Malloc Failed.\n");
+            }
+            //do_sha256(thisMsmt->rodata, (unsigned int)thisMsmt->rosize, digest);
+            if(strcmp(thisMsmt->name, "measurement")==0)
+            {
+                do_sha256(thisMsmt->rodata, 0, digest);
+            }
+            else
+            {
+                // somewhere between 4150 and 4200 :shrug:
+                int m;
+                // start at 4042 and search downward
+                // max_m bounded in [700, 725]
+                // TODO why?
+                int mask_size = 698;
+                uint8_t* maskedData = kzalloc(mask_size, GFP_KERNEL);
+                for(m=0; m<mask_size; m++)
+                {
+                    maskedData[m] = thisMsmt->rodata[4176+m];
+                    thisMsmt->rodata[4176+m] = '\0';
+                }
+                do_sha256(thisMsmt->rodata, thisMsmt->rosize, digest);
+
+
+                printk("Printing %d masked rodata bytes from %s module\n", mask_size, thisMsmt->name);
+                int numRows = 0;
+                int rowSize = 64;
+                while(rowSize * numRows < mask_size)
+                {
+                    numRows++;
+                }
+
+                int l;
+                for(k=0; k<numRows; k++)
+                {
+                    char* thisRow = kzalloc(2*rowSize, GFP_KERNEL);
+                    for(l=0; l<rowSize; l++)
+                    {
+                        uint8_t thisByte = maskedData[k*rowSize + l];
+                        if(0x20 < thisByte && thisByte < 0x7f)
+                        {
+                            sprintf(thisRow+l*2, "%02hhx", maskedData[k*rowSize + l]);
+                            //sprintf(thisRow+l*2, "%c ", maskedData[k*rowSize + l]);
+                        }
+                        else
+                        {
+                            sprintf(thisRow+l*2, "%02hhx", maskedData[k*rowSize + l]);
+                        }
+                        //thisRow[l] = thisMsmt->rodata[k*rowSize + l];
+                    }
+                    printk("%s\n", thisRow);
+                    kfree(thisRow);
+                }
+
+            }
+
+
+
+
+
+
+
+            // load the measurement into the payloads array
+            strcpy(measurementManager.payloads[i] + 88*j, thisMsmt->name);
+            memcpy(measurementManager.payloads[i] + 88*j + 56, digest, 32);
+            kfree(digest);
+            /*
+            for(k=0; k<256; k++)
+            {
+                measurementManager.payloads[i][512*j + k] = thisMsmt->name[k];
+                measurementManager.payloads[i][512*j + k+256] = digest[k];
+            }
+            */
         }
     }
 }
 
-u8* signoff = (u8*)"DEADBEEF";
 
 /*
 static void dataportRead(u32* result)
@@ -179,29 +268,23 @@ static void dataportWrite(uint8_t* input, int length)
 // size in bytes
 static void sendNextPayload(void)
 {
-    uint8_t* thisPayload = measurementManager.payloads[measurementManager.memory];
-    if(thisPayload == NULL)
+    int i;
+    for(i=0; i<measurementManager.numPayloads; i++)
     {
-        printk("send signoff\n");
-        measurementManager.state = Waiting;
-        resetMeasurementManager();
-        dataportWrite(signoff, 8);
+        printk("Load Payload %d\n", i);
+        dataportWrite(measurementManager.payloads[i], 4096);
+        printk("Send Ready Signal\n");
+        send_ready_signal();
     }
-    else
-    {
-        printk("send payload %d\n", measurementManager.memory);
-        dataportWrite(thisPayload, 4096);
-        measurementManager.memory = measurementManager.memory + 1;
-    }
-    send_ready_signal();
+    printk("Transaction Complete\n");
+    measurementManager.state = Waiting;
+    resetMeasurementManager();
 }
 
 static void measureModules(void)
 {
     struct module *mod;
     int it = 0;
-
-    printk("Got a measurement request...\n");
 
     /*
     ** Assume there can be at most 100 modules
@@ -216,8 +299,7 @@ static void measureModules(void)
     list_for_each_entry(mod, &THIS_MODULE->list, list)
     {
         char* thisName;
-        uint8_t* sendName = kzalloc(256, GFP_KERNEL);
-        struct ModuleMeasurement* msmt = kmalloc(sizeof(struct ModuleMeasurement), GFP_KERNEL);
+        struct ModuleMeasurement* msmt = kzalloc(sizeof(struct ModuleMeasurement), GFP_KERNEL);
         uint8_t* rodataPtr = (uint8_t*)mod->core_layout.base;
         u8 firstByte = ((u8*)mod->name)[0];
         if( 0x20 <= firstByte && firstByte <= 0x7F )
@@ -245,15 +327,9 @@ static void measureModules(void)
         // TODO change this to zalloc
         for(it=0; it<strlen(thisName); it++)
         {
-            sendName[it] = thisName[it];
+            //msmt->name[it] = thisName[it];
+            strcpy(msmt->name, thisName);
         }
-        /*
-        for(it=strlen(thisName); it<256; it++)
-        {
-            sendName[it] = "0";
-        }
-        */
-        msmt->name = sendName;
 
         measurementManager.measurements[measurementManager.numMeasurements] = msmt;
         measurementManager.numMeasurements++;
@@ -261,9 +337,7 @@ static void measureModules(void)
 //    mutex_unlock(&module_mutex);
 
     measurementManager.state = SendingModuleMeasurements;
-    measurementManager.memory = 0;
     buildModulePayloads();
-    measurementManager.memory = 0;
     sendNextPayload();
 }
 
@@ -287,7 +361,7 @@ static irqreturn_t connector_event_handler(int irq, struct uio_info *dev_info)
         case Initing:
             printk("Still initializing...\n");
         case Waiting:
-            printk("Measuring modules...\n");
+            printk("Got a Measurement Request\n");
             measurementManager.state = CollectingModuleMeasurements;
             measureModules();
             break;
@@ -446,7 +520,7 @@ static int __init connector_init_module (void)
 {
     int result = pci_register_driver(&connector_pci_driver);
 
-    printk("Measurement Module Start\n");
+    printk("Measurement Module Ready\n");
 
     measurementManager.state = Waiting;
     send_ready_signal();
