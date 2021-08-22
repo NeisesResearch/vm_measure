@@ -97,11 +97,11 @@ static void buildModulePayloads(void)
     int j;
     int k;
     measurementManager.numPayloads = 0;
-    // can have 100 payloads :shrug:
-    measurementManager.payloads = kzalloc(100 * sizeof(uint8_t*), GFP_KERNEL);
+    // can have 1 payload = 46 modules
+    measurementManager.payloads = kzalloc(1 * sizeof(uint8_t*), GFP_KERNEL);
 
-    // we can put 8 hashed measurements into each payload
-    while(measurementManager.numPayloads*14 < measurementManager.numMeasurements)
+    // we can put 46 hashed measurements into each payload
+    while(measurementManager.numPayloads*46 < measurementManager.numMeasurements)
     {
         measurementManager.payloads[measurementManager.numPayloads] = kzalloc(4096, GFP_KERNEL);
         measurementManager.numPayloads++;
@@ -130,7 +130,7 @@ static void buildModulePayloads(void)
             {
                 printk("Digest Malloc Failed.\n");
             }
-            //do_sha256(thisMsmt->rodata, (unsigned int)thisMsmt->rosize, digest);
+
             if(strcmp(thisMsmt->name, "measurement")==0)
             {
                 do_sha256(thisMsmt->rodata, 0, digest);
@@ -251,30 +251,22 @@ static void measureModules(void)
             thisName = mod->name;
             msmt->rosize = mod->core_layout.ro_size;
             msmt->rodata = kzalloc(msmt->rosize, GFP_KERNEL);
-
-            printk("size: %d\ntext_size %d\nro_size %d\n", mod->core_layout.size, mod->core_layout.text_size,mod->core_layout.ro_size);
-
-            //rodataPtr += mod->core_layout.text_size;
-            for(it=0;it<msmt->rosize;it++)
-            {
-                msmt->rodata[it] = rodataPtr[it];
-            }
+            memcpy(msmt->rodata, rodataPtr, msmt->rosize);
+            //printk("size: %d\ntext_size %d\nro_size %d\n", mod->core_layout.size, mod->core_layout.text_size,mod->core_layout.ro_size);
         }
         else
         {
-            // prepare to send the signoff
+            /*
+            ** these data are NOT available for &THIS_MODULE
+            ** if we want to report on this module,
+            ** we'll have to find something else to hash
+            */
             thisName = "measurement";
             msmt->rodata = NULL;
             msmt->rosize = 0;
         }
 
-        // pad the module name for sending
-        // TODO change this to zalloc
-        for(it=0; it<strlen(thisName); it++)
-        {
-            //msmt->name[it] = thisName[it];
-            strcpy(msmt->name, thisName);
-        }
+        strcpy(msmt->name, thisName);
 
         measurementManager.measurements[measurementManager.numMeasurements] = msmt;
         measurementManager.numMeasurements++;
