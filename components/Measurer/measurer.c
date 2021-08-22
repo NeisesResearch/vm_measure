@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <camkes.h>
+#include "registered_digests.h"
 
 typedef struct HashedModuleMeasurement
 {
@@ -48,6 +49,44 @@ void printMeasurement(HashedModuleMeasurement* msmt)
         printf("%02hhx", msmt->rodataDigest[i]);
     }
     printf("\n");
+}
+
+void checkDigest(HashedModuleMeasurement* msmt)
+{
+    printf("Module Name: %s\n", msmt->name);
+    printf("Module Rodata Digest: ");
+    for(int i=0; i<32; i++)
+    {
+        printf("%02hhx", msmt->rodataDigest[i]);
+    }
+    printf("\n");
+    if(strcmp(msmt->name, "poison")==0)
+    {
+        uint8_t numMatchingBytes = 0;
+        for(int i=0; i<32; i++)
+        {
+            if(msmt->rodataDigest[i] == poison[i])
+            {
+                numMatchingBytes++;
+            }
+        }
+        if(numMatchingBytes == 32)
+        {
+            printf("This rodata digest matches what was expected.\n");
+        }
+        else
+        {
+            printf("This rodata digest is not what was expected.\n");
+        }
+    }
+    else if(strcmp(msmt->name, "measurement")==0)
+    {
+        printf("This rodata digest is the result of hashing an empty input.\n");
+    }
+    else
+    {
+        printf("This rodata digest fails to match any registered digest.\n");
+    }
 }
 
 void printPayload(uint8_t* payload)
@@ -162,6 +201,7 @@ int run(void)
         }
     }
 
+    /*
     printf("Printing all measurements\n");
     fprintf(stderr,"============================================================\n");
     for(int i=0; i<numMeasurements; i++)
@@ -169,6 +209,19 @@ int run(void)
         printMeasurement(measurements[i]);
     }
     fprintf(stderr,"============================================================\n");
+    */
+
+    printf("Verify hash digests\n");
+    fprintf(stderr,"============================================================\n");
+    for(int i=0; i<numMeasurements; i++)
+    {
+        checkDigest(measurements[i]);
+        printf("\n");
+    }
+    fprintf(stderr,"============================================================\n");
+
+
+
     fprintf(stderr,"Finished\n");
     return 0;
 }
