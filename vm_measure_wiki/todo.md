@@ -6,8 +6,8 @@
 - [x] Implement module name measurement
 - [x] Implement Addition Attack
 - [x] Implement module rodata measurement
-- [ ] Implement rodata hash
-- [ ] Free every alloc
+- [x] Implement rodata hash
+- [x] Free every alloc
 
 ### Implementation Future todo
 - [ ] Implement linux reset
