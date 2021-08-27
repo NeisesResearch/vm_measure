@@ -9,23 +9,13 @@
 import <std_connector.camkes>;
 import <global-connectors.camkes>;
 import <vm-connectors.camkes>;
-
 import <VirtQueue/VirtQueue.camkes>;
 import <seL4VMDTBPassthrough.idl4>;
 import <FileServerInterface.camkes>;
 import <FileServer/FileServer.camkes>;
 import <SerialServer/SerialServer.camkes>;
 import <TimeServer/TimeServer.camkes>;
-
 import <devices.camkes>;
-
-component Measurer {
-    control;
-    consumes Ready ready;
-    emits    Done  done;
-    dataport Buf(4096) dest;
-    dataport Buf(4096) src;
-}
 
 component VM {
     VM_INIT_DEF()
@@ -40,27 +30,16 @@ assembly {
         VM_GENERAL_COMPOSITION_DEF()
         VM_COMPOSITION_DEF(0)
         connection seL4VMDTBPassthrough vm_dtb(from vm0.dtb_self, to vm0.dtb);
-        
-        component Measurer measurer;
-
-        connection seL4Notification measure_done( from vm0.ready,  to measurer.ready);
-        connection seL4GlobalAsynch measure_start(to   vm0.done, from measurer.done);
-
-        connection seL4SharedDataWithCaps measure_request( to vm0.crossvm_dp_0, from measurer.dest);
-        connection seL4SharedDataWithCaps measure_send(  from vm0.crossvm_dp_1,   to measurer.src);
     }
     configuration {
         VM_GENERAL_CONFIGURATION_DEF()
         VM_CONFIGURATION_DEF(0)
-
         vm0.num_extra_frame_caps = 0;
         vm0.extra_frame_map_address = 0;
         vm0.cnode_size_bits = 23;
         vm0.simple_untyped24_pool = 12;
-
-        vm0.measure_request_id = 0;
-        vm0.measure_request_size = 4096;
-        vm0.measure_send_id = 0;
-        vm0.measure_send_size = 4096;
     }
 }
+
+import "components/MeasurementManager/measurement_manager.camkes";
+
