@@ -491,6 +491,12 @@ static int __init connector_init_module (void)
 
 static void __exit connector_exit_module(void)
 {
+    // send removal signal to CAmkES AM
+    printk("Send Removal Signal\n");
+    dataportWrite((uint8_t*)"DEADDEAD", 8);
+    send_ready_signal();
+    
+    // cleanup pci device
     pci_dev_put(devices[0]->dev);
 }
 
