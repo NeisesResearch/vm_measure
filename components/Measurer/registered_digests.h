@@ -1,4 +1,7 @@
 
+#ifndef REGISTERED_DIGESTS_H
+#define REGISTERED_DIGESTS_H
+
 typedef struct DigestRegistry
 {
     // allow for 100 entries
@@ -29,4 +32,5 @@ unsigned char goodDigest1[] = {
     0x2e, 0x42, 0x83, 0xef, 0xff, 0x54, 0x67, 0xdd
 };
 
+#endif
 
