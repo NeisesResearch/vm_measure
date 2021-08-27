@@ -37,20 +37,6 @@ enum MeasurementHeader checkHeader(uint8_t* msmt, int headerNum)
     return result;
 }
 
-bool IsFinalPayload(uint8_t* data)
-{
-    bool isFinalPayload = false;
-    for(int i=0; i<46; i++)
-    {
-        if(checkHeader(data, i) == Signoff)
-        {
-            isFinalPayload = true;
-            break;
-        }
-    }
-    return isFinalPayload;
-}
-
 void printMeasurement(HashedModuleMeasurement* msmt)
 {
     printf("Module Name: %s\n", msmt->name);

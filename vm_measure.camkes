@@ -42,4 +42,5 @@ assembly {
 }
 
 import "components/MeasurementManager/measurement_manager.camkes";
+import "components/ModuleAnalyzer/module_analyzer.camkes";
 

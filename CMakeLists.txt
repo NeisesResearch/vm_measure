@@ -257,6 +257,7 @@ DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
 # Define our demo component that shares a dataport with the VM
 #DeclareCAmkESComponent(Measurer SOURCES components/Measurer/measurer.c)
 DeclareCAmkESComponent(MeasurementManager SOURCES components/MeasurementManager/measurement_manager.c)
+DeclareCAmkESComponent(ModuleAnalyzer     SOURCES components/ModuleAnalyzer/module_analyzer.c)
 
 # Declare root server
 DeclareCAmkESRootserver(

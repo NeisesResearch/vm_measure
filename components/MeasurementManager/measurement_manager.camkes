@@ -2,9 +2,15 @@ component MeasurementManager
 {
     control;
     consumes Ready ready;
-    emits   Done  done;
+    emits    Done  done;
     dataport Buf(4096) dest;
     dataport Buf(4096) src;
+
+    consumes Ready modules_analyzer_ready;
+    consumes Ready modules_payload_get;
+    consumes Ready modules_report_ready;
+    emits    Ready modules_payload_loaded;
+    dataport Buf(4096) modules_data;
 }
 
 assembly
@@ -21,7 +27,7 @@ assembly
     {
         vm0.measure_request_id = 0;
         vm0.measure_request_size= 4096;
-        vm0.measure_send_id = 0;
+        vm0.measure_send_id = 1;
         vm0.measure_send_size = 4096;
     }
 }
