@@ -1,10 +1,9 @@
 component MeasurementManager
 {
     control;
-    consumes Ready ready;
-    emits    Done  done;
-    dataport Buf(4096) dest;
-    dataport Buf(4096) src;
+    consumes Ready msmt_module_ready;
+    emits    Done  msmt_component_done;
+    dataport Buf(4096) msmt_data;
 
     consumes Ready modules_analyzer_ready;
     consumes Ready modules_payload_get;
@@ -18,16 +17,13 @@ assembly
     composition
     {
         component MeasurementManager msmtmngr;
-        connection seL4Notification measure_done( from vm0.ready,   to msmtmngr.ready);
-        connection seL4GlobalAsynch measure_start(to   vm0.done,  from msmtmngr.done);
-        connection seL4SharedDataWithCaps measure_request( to vm0.crossvm_dp_0, from msmtmngr.dest);
-        connection seL4SharedDataWithCaps measure_send(  from vm0.crossvm_dp_1,   to msmtmngr.src);
+        connection seL4Notification measure_done(            from vm0.ready,          to msmtmngr.msmt_module_ready);
+        connection seL4GlobalAsynch measure_start(             to vm0.done,         from msmtmngr.msmt_component_done);
+        connection seL4SharedDataWithCaps measurement_channel( to vm0.crossvm_dp_0, from msmtmngr.msmt_data);
     }
     configuration
     {
-        vm0.measure_request_id = 0;
-        vm0.measure_request_size= 4096;
-        vm0.measure_send_id = 1;
-        vm0.measure_send_size = 4096;
+        vm0.measurement_channel_id = 0;
+        vm0.measurement_channel_size= 4096;
     }
 }

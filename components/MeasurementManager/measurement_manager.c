@@ -22,15 +22,15 @@ void RequestModulesMeasurement(void* dp)
 
 int run(void)
 {
-    memset(dest, '0', 4096);
+    memset(msmt_data, '0', 4096);
     printf("VM Dataport reset!\n");
-    //strcpy(dest, "This is a crossvm dataport test string");
+    //strcpy(msmt_data, "This is a crossvm dataport test string");
 
     // wait until the module analyzer is ready
     modules_analyzer_ready_wait();
 
     // wait until the Linux kernel module is ready
-    ready_wait();
+    msmt_module_ready_wait();
     printf("Measurement Module Ready Signal Received\n");
 
     // prepare for a full payload of measurements
@@ -40,19 +40,19 @@ int run(void)
     while(1)
     {
         printf("Request Measurement\n");
-        done_emit_underlying();
-        ready_wait();
+        msmt_component_done_emit_underlying();
+        msmt_module_ready_wait();
 
-        printf("Request Analysis\n");
-        if(IsFinalPayload((uint8_t*)dest))
+        if(IsFinalPayload((uint8_t*)msmt_data))
         {
-            RequestModulesMeasurement(dest);
+            printf("Request Analysis\n");
+            RequestModulesMeasurement(msmt_data);
             printf("Report: %s\n", (char*)modules_data);
             break;
         }
         else
         {
-            RequestModulesMeasurement(dest);
+            RequestModulesMeasurement(msmt_data);
             modules_payload_get_wait();
         }
         break;

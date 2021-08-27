@@ -20,7 +20,6 @@ import <devices.camkes>;
 component VM {
     VM_INIT_DEF()
     dataport Buf(4096) crossvm_dp_0;
-    dataport Buf(4096) crossvm_dp_1;
     emits    Ready ready;
     consumes Done  done;
 }
