@@ -53,7 +53,6 @@ int run(void)
         else
         {
             RequestModulesMeasurement(msmt_data);
-            modules_payload_get_wait();
         }
         break;
     }
