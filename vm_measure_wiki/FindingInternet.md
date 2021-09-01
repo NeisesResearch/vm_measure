@@ -44,3 +44,21 @@ This is so we can create a network interface within the Docker Container.
 In Docker container, `sudo ip tuntap add mode tap tap0` 
 This creates a network interface "tap0" which corresponds to the /dev/net/tun we created earlier.
 
+## Set up a network bridge within the Docker Container
+
+Get the app
+`sudo apt-get install bridge-utils`
+
+Add a bridge and configure it to interface with tap0 and eth0 (the internet receiving device)
+`sudo brctl addbr virbr0`
+`sudo brctl addif virbr0 tap0 &&
+ sudo brctl addif virbr0 eth0`
+
+Enable all devices concerned
+ `sudo ip link set tap0 up`
+ `sudo ip link set virbr0 up`
+ `sudo ip link set eth0 up`
+
+Verify the bridge was setup correctly
+ `sudo brctl show`
+
