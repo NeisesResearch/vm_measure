@@ -252,12 +252,40 @@ DefineCAmkESVMFileServer()
 CAmkESAddImportPath(${KernelARMPlatform})
 
 # Define our VM Component with out cross vm dataports glue code
+# this one was an attempt to get signals to and from the VMM component
+# DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c components/VM/my_vm.c)
 DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
 
 # Define our demo component that shares a dataport with the VM
 #DeclareCAmkESComponent(Measurer SOURCES components/Measurer/measurer.c)
-DeclareCAmkESComponent(MeasurementManager SOURCES components/MeasurementManager/measurement_manager.c)
+DeclareCAmkESComponent(MeasurementManager 
+                        SOURCES components/MeasurementManager/measurement_manager.c
+                        LIBS fileserver_cpio)
 DeclareCAmkESComponent(ModuleAnalyzer     SOURCES components/ModuleAnalyzer/module_analyzer.c)
+
+#==========================================================================================================
+# BEGIN RESEARCH
+#==========================================================================================================
+
+# Define a File System
+#get_target_property(fileserver_images vm_fserver_config FILES)
+#get_target_property(fileserver_deps vm_fserver_config DEPS)
+#include(cpio)
+#MakeCPIO(file_server_archive.o "${fileserver_images}" DEPENDS "${fileserver_deps}")
+#add_library(fileserver_cpio STATIC EXCLUDE_FROM_ALL file_server_archive.o)
+#set_property(TARGET fileserver_cpio PROPERTY LINKER_LANGUAGE C)
+#ExtendCAmkESComponentInstance(FileServer msmtmngr LIBS fileserver_cpio)
+ 
+# We might need to set this ON. It defaults to OFF, although it might be
+# set on somewhere in our include paths
+#set(LibSel4MuslcSysCPIOFS ON)
+
+# Don't do this declare; it's already done in FileServer/CMakeLists.txt
+#DeclareCAmkESComponent(FileServer)
+
+#==========================================================================================================
+# END RESEARCH
+#==========================================================================================================
 
 # Declare root server
 DeclareCAmkESRootserver(

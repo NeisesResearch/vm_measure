@@ -1,4 +1,4 @@
-
+#include <fcntl.h>
 #include "measurement_utils.h"
 #include "payload_utils.h"
 
@@ -22,6 +22,13 @@ void RequestModulesMeasurement(void* dp)
 
 int run(void)
 {
+    // TODO: are there any actual files for us to open?
+    // fs_ctrl_open comes from FileServer/src/server.c
+    int myFD = fs_ctrl_open("/etc/hostname", O_RDONLY);
+    // "open" here seems to come from FileServerInterface.camkes: procedure FSI
+    // which in turn is implemented in libsel4muslcsys/blob/master/src/sys_io.c
+    //int myFD = open("/etc/hostname", O_RDONLY);
+
     memset(msmt_data, '0', 4096);
     printf("VM Dataport reset!\n");
     //strcpy(msmt_data, "This is a crossvm dataport test string");
