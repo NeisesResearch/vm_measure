@@ -10,6 +10,8 @@ component MeasurementManager
     consumes Ready modules_report_ready;
     emits    Ready modules_payload_loaded;
     dataport Buf(4096) modules_data;
+
+    uses FileServerInterface fs_ctrl;
 }
 
 assembly
@@ -17,9 +19,13 @@ assembly
     composition
     {
         component MeasurementManager msmtmngr;
-        connection seL4Notification measure_done(            from vm0.ready,          to msmtmngr.msmt_module_ready);
-        connection seL4GlobalAsynch measure_start(             to vm0.done,         from msmtmngr.msmt_component_done);
+
+        connection seL4Notification measure_done(  from vm0.ready,          to msmtmngr.msmt_module_ready);
+        connection seL4GlobalAsynch measure_start(   to vm0.done,         from msmtmngr.msmt_component_done);
         connection seL4SharedDataWithCaps measurement_channel( to vm0.crossvm_dp_0, from msmtmngr.msmt_data);
+
+        // Connect the measurementmanager to the file server used by the hosted linux kernel
+        connection seL4RPCDataport filesystemdataport(from msmtmngr.fs_ctrl, to fserv.fs_ctrl);
     }
     configuration
     {
