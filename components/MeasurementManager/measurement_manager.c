@@ -25,10 +25,6 @@ int run(void)
     memset(msmt_data, '0', 4096);
     printf("VM Dataport reset!\n");
     //strcpy(msmt_data, "This is a crossvm dataport test string");
-    
-    // prepare for a full payload of measurements
-    HashedModuleMeasurement** measurements = malloc(46 * sizeof(HashedModuleMeasurement*));
-    int numMeasurements = 0;
 
     // wait until the module analyzer is ready
     modules_analyzer_ready_wait();
@@ -38,10 +34,29 @@ int run(void)
     printf("Measurement Module Ready Signal Received\n");
 
 
+    //TODO
+    // wait until I should request a measurement
+    // ...
     while(1)
     {
-        // wait until I should request a measurement
-        // ...
+        printf("Initiate Perry Provisioning\n");
+        while(1)
+        {
+            msmt_component_done_emit_underlying();
+            msmt_module_ready_wait();
+            if(IsFinalPayload((uint8_t*)msmt_data))
+            {
+                printf("Request Provisioning Status\n");
+                RequestModulesMeasurement(msmt_data);
+                printf("Report: %s\n", (char*)modules_data);
+                break;
+            }
+            else
+            {
+                RequestModulesMeasurement(msmt_data);
+            }
+        }
+        break;
         printf("Request Module Measurements\n");
         while(1)
         {
@@ -59,7 +74,6 @@ int run(void)
                 RequestModulesMeasurement(msmt_data);
             }
         }
-        break;
     }
 
     fprintf(stderr,"Measurement Manager Component Finished\n");
