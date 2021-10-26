@@ -37,7 +37,7 @@ enum MeasurementHeader checkHeader(uint8_t* msmt, int headerNum)
     return result;
 }
 
-void printMeasurement(HashedModuleMeasurement* msmt)
+void PrintMeasurement(HashedModuleMeasurement* msmt)
 {
     printf("Module Name: %s\n", msmt->name);
     printf("Module Rodata Digest: ");

@@ -2,7 +2,7 @@
 #ifndef REGISTERED_DIGESTS_H
 #define REGISTERED_DIGESTS_H
 
-#include "../MeasurementManager/measurement_utils.h"
+#include "measurement_utils.h"
 
 typedef struct DigestRegistry
 {

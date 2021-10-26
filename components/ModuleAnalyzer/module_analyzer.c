@@ -8,6 +8,43 @@
 
 HashedModuleMeasurement** My_Global_Array_Of_Golden_Digests;
 
+void PrintGoldenDigests(void)
+{
+    for(int i=0; i<46; i++)
+    {
+        if(strcmp(My_Global_Array_Of_Golden_Digests[i]->name, "dummy name")==0)
+        {
+            continue;
+        }
+        PrintMeasurement(My_Global_Array_Of_Golden_Digests[i]);
+    }
+}
+
+bool CheckForDigestMatchInMySpecialGlobalArray(HashedModuleMeasurement* inputMsmt)
+{
+    for(int i=0; i<46; i++)
+    {
+        if(strcmp(inputMsmt->name, My_Global_Array_Of_Golden_Digests[i]->name) == 0)
+        {
+            bool isMatch = true;
+            for(int j=0; j<32; j++)
+            {
+                if(inputMsmt->rodataDigest[j] != My_Global_Array_Of_Golden_Digests[i]->rodataDigest[j])
+                {
+                    isMatch = false;
+                    break;
+                }
+            }
+            if(isMatch)
+            {
+                return true;
+            }
+        }
+        continue;
+    }
+    return false;
+}
+
 void do_the_thing(bool isPerryProvisioning)
 {
     HashedModuleMeasurement** measurements = malloc(46 * sizeof(HashedModuleMeasurement*));
@@ -31,11 +68,11 @@ void do_the_thing(bool isPerryProvisioning)
             case Signoff:
                 fprintf(stderr, "Got Sign-Off. Breaking...\n");
                 gotSignOff = true;
-                goto good_return;
+                break;
             case MeasurementModulePayload:
                 fprintf(stderr, "Got Measurement-Module Measurement\n");
                 numMeasurements++;
-                goto good_return;
+                break;
             case ModulePayload:
                 fprintf(stderr, "Got Module Measurement\n", i);
                 thisMsmt = malloc(1 * sizeof(HashedModuleMeasurement));
@@ -47,14 +84,14 @@ void do_the_thing(bool isPerryProvisioning)
                 thisMsmt->rodataDigest = rodataDigestPtr;
                 measurements[numMeasurements] = thisMsmt;
                 numMeasurements++;
-                goto good_return;
+                break;
             default:
                 fprintf(stderr, "Went to default. Shouldn't be here...\n");
-                goto good_return;
+                break;
         }
         if(gotSignOff)
         {
-            goto good_return;
+            break;
         }
     }
 
@@ -71,29 +108,52 @@ void do_the_thing(bool isPerryProvisioning)
         if(isPerryProvisioning)
         {
             // TODO is this all we need here?
-            for(int i=0; i<46; i++)
+            InitGoldenDigests();
+            printf("start perry provisioning...\n");
+            for(int i=0; i<numMeasurements; i++)
             {
-                My_Global_Array_Of_Golden_Digests[i] = measurements[i];
+                printf("%d, ", i);
+                HashedModuleMeasurement* temp = measurements[i];
+                printf("%d, ", i);
+                //My_Global_Array_Of_Golden_Digests[i] = temp;
+                My_Global_Array_Of_Golden_Digests[i]->name = temp->name;
+                My_Global_Array_Of_Golden_Digests[i]->rodataDigest = temp->rodataDigest;
             }
+            printf("Perry Provisioning Completed. Observe the golden digests:\n");
+            PrintGoldenDigests();
             goto good_return;
         }
         else
         {
+            // TODO just print later during the verification stage
+            /*
             printf("Printing all measurements\n");
             fprintf(stderr,"============================================================\n");
             for(int i=0; i<numMeasurements; i++)
             {
-                printMeasurement(measurements[i]);
+                PrintMeasurement(measurements[i]);
             }
             fprintf(stderr,"============================================================\n");
+            */
 
             printf("Verify hash digests\n");
             fprintf(stderr,"============================================================\n");
             for(int i=0; i<numMeasurements; i++)
             {
-                // TODO change checkDigest to reference global array of golden
-                // digests
-                checkDigest(measurements[i]);
+                if(CheckForDigestMatchInMySpecialGlobalArray(measurements[i]))
+                {
+                    printf("We matched the following module:\n");
+                }
+                else
+                {
+                    printf("We failed to match the following module:\n");
+                }
+
+                PrintMeasurement(measurements[i]);
+
+                // This is a check against the old digest registry. We'll
+                // probably let this die soon.
+                //checkDigest(measurements[i]);
                 printf("\n");
             }
             fprintf(stderr,"============================================================\n");
@@ -111,9 +171,25 @@ good_return:
        return;
 }
 
+void InitGoldenDigests(void)
+{
+    My_Global_Array_Of_Golden_Digests = malloc(46 * sizeof(HashedModuleMeasurement*));
+    for(int i=0; i<46; i++)
+    {
+        HashedModuleMeasurement* thisDummyMsmt = malloc(sizeof(HashedModuleMeasurement));
+        thisDummyMsmt->name = malloc(100);
+        thisDummyMsmt->name = "dummy name";
+        thisDummyMsmt->rodataDigest = malloc(32);
+        thisDummyMsmt->rodataDigest = "00000000000000000000000000000000";
+        My_Global_Array_Of_Golden_Digests[i] = thisDummyMsmt;
+    }
+}
+
 int run(void)
 {
-    HashedModuleMeasurement** My_Global_Array_Of_Golden_Digests = malloc(46 * sizeof(HashedModuleMeasurement*));
+
+
+
     memset(data, '0', 4096);
     printf("Modules Dataport reset!\n");
     //strcpy(dest, "This is a crossvm dataport test string");
