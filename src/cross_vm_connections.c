@@ -19,11 +19,11 @@
 #endif
 
 // these are defined in the dataport's glue code
-extern dataport_caps_handle_t crossvm_dp_0_handle;
+extern dataport_caps_handle_t memdev_handle;
 //extern dataport_caps_handle_t crossvm_dp_1_handle;
 
 static struct camkes_crossvm_connection connections[] = {
-    {&crossvm_dp_0_handle, ready_emit, -1, "conn_0"}//,
+    {&memdev_handle, ready_emit, -1, "conn_0"}//,
 //    {&crossvm_dp_1_handle, NULL, -1, "conn_1"}
 };
 

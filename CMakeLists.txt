@@ -36,31 +36,6 @@ set(linux_symvers "${CAMKES_VM_LINUX_DIR}/linux_configs/4.9.y/64/Module.symvers"
 set(linux_dir "${CAMKES_VM_IMAGES_DIR}/qemu-arm-virt/linux-stable")
 
 # Add a kernel module
-ExternalProject_Add(good-module
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/good-module
-    BUILD_ALWAYS ON
-    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/good-module-stamp
-    EXCLUDE_FROM_ALL
-    INSTALL_COMMAND ""
-    CMAKE_ARGS
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-        -DCMAKE_TOOLCHAIN_FILE=${LINUX_64BIT_TOOLCHAIN}
-        -DLINUX_KERNEL_DIR=${linux_dir}
-        -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
-)
-# Add our module binary to the overlay
-# The number at this time happens to be 275.
-AddExternalProjFilesToOverlay(
-    good-module
-    ${CMAKE_CURRENT_BINARY_DIR}/good-module
-    vm-overlay
-    "lib/modules/4.9.275/kernel/drivers/vmm"
-    FILES
-    good.ko
-)
-
-# Add another module
 ExternalProject_Add(poison-module
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/poison-module
@@ -74,6 +49,8 @@ ExternalProject_Add(poison-module
         -DLINUX_KERNEL_DIR=${linux_dir}
         -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
 )
+# Add our module binary to the overlay
+# The number at this time happens to be 275.
 AddExternalProjFilesToOverlay(
     poison-module
     ${CMAKE_CURRENT_BINARY_DIR}/poison-module
@@ -82,13 +59,12 @@ AddExternalProjFilesToOverlay(
     FILES
     poison.ko
 )
-
 # Add another module
-ExternalProject_Add(measurement-module
+ExternalProject_Add(signal-module
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
-    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/measurement-module
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/signal-module
     BUILD_ALWAYS ON
-    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/measurement-module-stamp
+    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/signal-module-stamp
     EXCLUDE_FROM_ALL
     INSTALL_COMMAND ""
     CMAKE_ARGS
@@ -98,12 +74,12 @@ ExternalProject_Add(measurement-module
         -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
 )
 AddExternalProjFilesToOverlay(
-    measurement-module
-    ${CMAKE_CURRENT_BINARY_DIR}/measurement-module
+    signal-module
+    ${CMAKE_CURRENT_BINARY_DIR}/signal-module
     vm-overlay
     "lib/modules/4.9.275/kernel/drivers/vmm"
     FILES
-    measurement.ko
+    signal.ko
 )
 
 
@@ -189,27 +165,6 @@ AddExternalProjFilesToOverlay(
         vm-overlay
     )
 
-
-    # Add script to test dataport module
-#    AddFileToOverlayDir(
-#        "S91crossvm_test"
-#        ${CMAKE_CURRENT_SOURCE_DIR}/overlay_files/init_scripts/cross_vm_test
-#        "etc/init.d"
-#        vm-overlay
-#    )
-
-
-
-
-
-# Add our poison module's init script- just an insmod call
-AddFileToOverlayDir(
-    "mike_modules_init"
-    ${CMAKE_CURRENT_SOURCE_DIR}/modules_init
-    "etc/init.d"
-    vm-overlay
-)
-
 # Generate overlayed rootfs
 AddOverlayDirToRootfs(
     vm-overlay 
@@ -251,12 +206,7 @@ DefineCAmkESVMFileServer()
 CAmkESAddImportPath(${KernelARMPlatform})
 
 # Define our VM Component with out cross vm dataports glue code
-# DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
-
-# Define our demo component that shares a dataport with the VM
-#DeclareCAmkESComponent(Measurer SOURCES components/Measurer/measurer.c)
-DeclareCAmkESComponent(MeasurementManager SOURCES components/MeasurementManager/measurement_manager.c)
-DeclareCAmkESComponent(ModuleAnalyzer     SOURCES components/ModuleAnalyzer/module_analyzer.c)
+DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
 
 add_subdirectory(components/ModulesIntrospector)
 

@@ -14,8 +14,10 @@
 #include <camkes.h>
 #include <stdio.h>
 
-#define RAM_BASE 0x40000000
 #define N 10
+
+#define VM_RAM_BASE 0x40000000
+#define VM_RAM_SIZE 0x20000000
 
 int run(void)
 {
@@ -27,10 +29,13 @@ int run(void)
         //memcpy(Linux_Mem, ((char *)memdev), sizeof(uint8_t) * 1024 * 1000 * 100);
 
         printf("bingo\n");
-        //char bingo = ((char*)memdev)[0];
+        int address = 0x40FB61E0;
+        int index = address - VM_RAM_BASE;
+        char bingo = ((char*)memdev)[index];
+        printf("bingo2: %c\n", bingo);
 
-        done_emit_underlying();
-        done_emit();
+        //done_emit_underlying();
+        //done_emit();
 
         /*
         const int headersUpperBound = 100;
