@@ -210,7 +210,6 @@ AddFileToOverlayDir(
     vm-overlay
 )
 
-
 # Generate overlayed rootfs
 AddOverlayDirToRootfs(
     vm-overlay 
@@ -252,12 +251,14 @@ DefineCAmkESVMFileServer()
 CAmkESAddImportPath(${KernelARMPlatform})
 
 # Define our VM Component with out cross vm dataports glue code
-DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
+# DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
 
 # Define our demo component that shares a dataport with the VM
 #DeclareCAmkESComponent(Measurer SOURCES components/Measurer/measurer.c)
 DeclareCAmkESComponent(MeasurementManager SOURCES components/MeasurementManager/measurement_manager.c)
 DeclareCAmkESComponent(ModuleAnalyzer     SOURCES components/ModuleAnalyzer/module_analyzer.c)
+
+add_subdirectory(components/ModulesIntrospector)
 
 # Declare root server
 DeclareCAmkESRootserver(

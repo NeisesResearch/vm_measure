@@ -40,9 +40,14 @@ int st_init(void)
     printk("==============================\n");
     printk("Good Module Init\n");
     printk("Create /proc/sched_workq\n");
+    proc_create("sched_workq", 0, NULL, &proc_file_fops);
     printk("Try `cat` on it.\n");
     printk("==============================\n");
-    proc_create("sched_workq", 0, NULL, &proc_file_fops);
+    const void* virtAddr = (const void*)0xFFFF000008FB61E0;
+    printk("You input the Virtual Address:   %p\n", virtAddr);
+    phys_addr_t physAddr = virt_to_phys(virtAddr);
+    printk("I computed the Physical Address: %p\n", (void*)physAddr);
+    printk("==============================\n");
     return 0;
 }
 

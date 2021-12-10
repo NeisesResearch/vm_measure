@@ -460,7 +460,9 @@ static int __init connector_init_module (void)
     printk("Measurement Module Ready\n");
 
     measurementManager.state = Waiting;
+    printk("Module Ready\n");
     send_ready_signal();
+    printk("Ready\n");
 
     /*
     dataportWait();

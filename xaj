@@ -1,0 +1,10 @@
+    "modules": {
+      "type": {
+        "kind": "struct",
+        "name": "list_head"
+      },
+      "address": 18446462598883533280
+    },
+
+    virt addr: FFFF000008FB61E0
+    phys addr: 0000000040FB61E0

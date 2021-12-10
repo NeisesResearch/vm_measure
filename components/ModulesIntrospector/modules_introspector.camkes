@@ -1,0 +1,29 @@
+
+component ModulesIntrospector {
+    include <sb_proc_types.h>;
+    control;
+
+    // guest memory connection
+    dataport Buf(2048) memdev;
+
+    // vm signals
+    consumes Ready ready;
+    emits Done done;
+}
+
+assembly
+{
+    composition
+    {
+        component ModulesIntrospector modins;
+        connection seL4Notification measure_done( from vm0.ready,  to modins.ready);
+        connection seL4GlobalAsynch measure_start(  to vm0.done, from modins.done);
+        connection seL4SharedDataWithCaps measurement_channel( to vm0.memdev, from modins.memdev);
+    }
+    configuration
+    {
+        vm0.measurement_channel_id = 0;
+        vm0.measurement_channel_size = 4096;
+    }
+}
+
