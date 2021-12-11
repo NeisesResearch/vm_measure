@@ -25,7 +25,9 @@ component VM {
     consumes Done  done;
 
     // guest memory region
-    dataport Buf(2048) memdev;
+    dataport Buf memdev;
+    // data to pass through
+    dataport Buf introspect_data;
 }
 
 assembly {
@@ -41,9 +43,6 @@ assembly {
         vm0.extra_frame_map_address = 0;
         vm0.cnode_size_bits = 23;
         vm0.simple_untyped24_pool = 12;
-
-        introman.memdev_hardware_cached = false;
-        vm0.memdev_hardware_cached = false;
     }
 }
 

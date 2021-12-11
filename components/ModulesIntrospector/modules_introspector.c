@@ -21,18 +21,27 @@
 
 int run(void)
 {
-    printf("\n\nbing!\n\n");
     while (1)
     {
         ready_wait();
 
+        //char* Linux_Mem = malloc(0x20000000);
+        //memcpy(Linux_Mem, ((char *)memdev), sizeof(uint8_t) * 8191);
+        //memcpy(Linux_Mem, ((char *)memdev), sizeof(uint8_t) * 0x20000000);
         //memcpy(Linux_Mem, ((char *)memdev), sizeof(uint8_t) * 1024 * 1000 * 100);
 
-        printf("bingo\n");
+        printf("\nbingo\n");
         int address = 0x40FB61E0;
-        int index = address - VM_RAM_BASE;
-        char bingo = ((char*)memdev)[index];
-        printf("bingo2: %c\n", bingo);
+        //int index = address - VM_RAM_BASE;
+        //char bingo = ((char*)memdev)[index];
+        //printf("bingo2: %c\n", bingo);
+
+        int i=0;
+        for(i=0; i<VM_RAM_SIZE; i++)
+        {
+            char bingo = ((char*)memdev)[i];
+            printf("byte %d, %c\n", i, bingo);
+        }
 
         //done_emit_underlying();
         //done_emit();

@@ -4,7 +4,10 @@ component ModulesIntrospector {
     control;
 
     // guest memory connection
-    dataport Buf(2048) memdev;
+    dataport Buf memdev;
+
+    // cross vm dataport
+    dataport Buf introspect_data;
 
     // vm signals
     consumes Ready ready;
@@ -19,11 +22,16 @@ assembly
         connection seL4Notification measure_done( from vm0.ready,  to modins.ready);
         connection seL4GlobalAsynch measure_start(  to vm0.done, from modins.done);
         connection seL4SharedDataWithCaps measurement_channel( to vm0.memdev, from modins.memdev);
+
+        connection seL4SharedDataWithCaps conn_introspect_data(from modins.introspect_data, to vm0.introspect_data);
     }
     configuration
     {
-        vm0.measurement_channel_id = 0;
-        vm0.measurement_channel_size = 4096;
+        vm0.introspect_data_id = 0;
+        vm0.introspect_data_size = 4096;
+
+        modins.memdev_hardware_cached = false;
+        vm0.memdev_hardware_cached = false;
     }
 }
 
