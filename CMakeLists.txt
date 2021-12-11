@@ -206,7 +206,7 @@ DefineCAmkESVMFileServer()
 CAmkESAddImportPath(${KernelARMPlatform})
 
 # Define our VM Component with out cross vm dataports glue code
-DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c)
+DeclareCAmkESComponent(VM SOURCES src/cross_vm_connections.c src/init_dataport_ram.c)
 
 add_subdirectory(components/ModulesIntrospector)
 
