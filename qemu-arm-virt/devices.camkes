@@ -17,6 +17,9 @@ assembly {
 	composition {}
 	configuration {
 
+        vm_memdev.paddr = VM_RAM_BASE;
+        vm_memdev.size = VM_RAM_SIZE;
+
         vm0.linux_address_config = {
             "linux_ram_base" : VAR_STRINGIZE(VM_RAM_BASE),
             "linux_ram_paddr_base" : VAR_STRINGIZE(VM_RAM_BASE),
