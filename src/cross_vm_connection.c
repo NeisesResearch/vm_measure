@@ -1,5 +1,5 @@
 /*
- * Copyright 2019, Data61, CSIRO (ABN 41 687 119 230)
+ * Copyright 2020, Data61, CSIRO (ABN 41 687 119 230)
  *
  * SPDX-License-Identifier: BSD-2-Clause
  */
@@ -18,13 +18,19 @@
 #define CONNECTION_BASE_ADDRESS 0x3F000000
 #endif
 
+//example going from linux to native component
+static void sys_ipa_to_pa(void *cookie)
+{
+    printf("address from linux is %x\n", *(seL4_Word *)introspect_data);
+
+    ready_emit();
+}
+
 // these are defined in the dataport's glue code
 extern dataport_caps_handle_t introspect_data_handle;
-//extern dataport_caps_handle_t crossvm_dp_1_handle;
 
 static struct camkes_crossvm_connection connections[] = {
-    {&introspect_data_handle, ready_emit, -1, "conn_0"}//,
-//    {&crossvm_dp_1_handle, NULL, -1, "conn_1"}
+    {&introspect_data_handle, sys_ipa_to_pa, -1, "introspect_vm"}
 };
 
 static int consume_callback(vm_t *vm, void *cookie)
@@ -34,6 +40,7 @@ static int consume_callback(vm_t *vm, void *cookie)
 }
 
 extern seL4_Word done_notification_badge(void);
+
 void init_cross_vm_connections(vm_t *vm, void *cookie)
 {
     connections[0].consume_badge = done_notification_badge();

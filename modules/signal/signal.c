@@ -198,6 +198,15 @@ static int connector_pci_probe(struct pci_dev *dev,
     printk("Creating /proc/sched_workq...\n");
     proc_create("sched_workq", 0, NULL, &proc_file_fops);
     printk("Try `cat` on it to signal for a measurement.\n");
+    void* entryAddr0 = (void*)0xFFFF000008FB61E0;
+    void* entryAddr1 = (void*)0xFFFF000000C71288;
+    void* entryAddr2 = (void*)0xFFFF000000C70A80;
+    printk("You input vaddr: %p\n", entryAddr0);
+    printk("I give back paddr: %p\n", virt_to_phys(entryAddr0));
+    printk("You input vaddr: %p\n", entryAddr1);
+    printk("I give back paddr: %p\n", virt_to_phys(entryAddr1));
+    printk("You input vaddr: %p\n", entryAddr2);
+    printk("I give back paddr: %p\n", virt_to_phys(entryAddr2));
     printk("==============================\n");
 	
 
