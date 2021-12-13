@@ -8,3 +8,11 @@
 
     virt addr: FFFF000008FB61E0
     phys addr: 0000000040FB61E0
+
+    list_head first entry:
+    virt addr: FFFF000000C71288
+    phys addr: 0000000038C71288
+
+    list_head last entry:
+    virt addr: FFFF000000C70A80
+    phys addr: 0000000038C70A80
