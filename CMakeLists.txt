@@ -92,6 +92,25 @@ AddExternalProjFilesToOverlay(poison-module
 ${CMAKE_CURRENT_BINARY_DIR}/poison-module overlay "lib/modules/4.9.275/kernel/drivers/vmm"
     FILES poison.ko)
 
+# Add the external signal module project
+ExternalProject_Add(temp-module
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
+    BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/temp-module
+    BUILD_ALWAYS ON
+    STAMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/temp-module-stamp
+    EXCLUDE_FROM_ALL
+    INSTALL_COMMAND ""
+    CMAKE_ARGS
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_TOOLCHAIN_FILE=${LINUX_64BIT_TOOLCHAIN}
+        -DLINUX_KERNEL_DIR=${linux_dir}
+        -DMODULE_HELPERS_FILE=${CAMKES_VM_LINUX_DIR}/linux-module-helpers.cmake
+)
+# Add our module binary to the overlay
+AddExternalProjFilesToOverlay(temp-module
+${CMAKE_CURRENT_BINARY_DIR}/temp-module overlay "lib/modules/4.9.275/kernel/drivers/vmm"
+    FILES temp.ko)
+
 # does this do anything?
 # no, we removed that init script in favor of cannibalizing the other
 # AddFileToOverlayDir("init" ${CMAKE_CURRENT_SOURCE_DIR}/init "/etc/init.d" overlay)

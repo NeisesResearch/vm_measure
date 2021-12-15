@@ -8,3 +8,4 @@ include("${MODULE_HELPERS_FILE}")
 
 DefineLinuxModule(${CMAKE_CURRENT_LIST_DIR}/poison poison-module poison-target KERNEL_DIR ${LINUX_KERNEL_DIR})
 DefineLinuxModule(${CMAKE_CURRENT_LIST_DIR}/signal signal-module signal-target KERNEL_DIR ${LINUX_KERNEL_DIR})
+DefineLinuxModule(${CMAKE_CURRENT_LIST_DIR}/temp temp-module temp-target KERNEL_DIR ${LINUX_KERNEL_DIR})

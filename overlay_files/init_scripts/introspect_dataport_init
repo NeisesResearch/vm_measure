@@ -7,3 +7,5 @@
 
 insmod /lib/modules/4.9.275/kernel/drivers/vmm/signal.ko
 insmod /lib/modules/4.9.275/kernel/drivers/vmm/poison.ko
+insmod /lib/modules/4.9.275/kernel/drivers/vmm/temp.ko
+
