@@ -34,38 +34,170 @@ int run(void)
         for (int i = 0; i < 10; i++) {
             printf("camkes_fib[%d]@%p = %d, ", i, (fib_buf + i), fib_buf[i]);
         }
-
         printf("\n");
-        printf("Okay now for that physical address you computed...\n");
+
+        printf("\nOkay now for that physical address you computed...\n");
         char bingo = ((char*)memdev)[0xFB61E0];
-        for(int i=0; i<32; i++)
-        {
-            printf("%02X", ((char*)memdev)[0xFB61E0+i]);
-        }
-        printf("\nChar was %02X\n", bingo);
-
+        printf("Char was %02X\n", bingo);
         printf("Here's some bytes:\n");
-        printf("%02X", ((char*)memdev)[0xC71288+0]);
-        printf("%02X", ((char*)memdev)[0xC71288+1]);
-        printf("%02X", ((char*)memdev)[0xC71288+2]);
-        printf("%02X", ((char*)memdev)[0xC71288+3]);
-        printf("%02X", ((char*)memdev)[0xC71288+4]);
-        printf("%02X", ((char*)memdev)[0xC71288+5]);
-        printf("%02X", ((char*)memdev)[0xC71288+6]);
 
-
-        printf("\nHere's some bytes:\n");
-        for(int i=0; i<32; i++)
+        void printerate(int physAddr, int numLongs)
         {
-            //printf("%02X", ((char*)memdev)[0x38C71288-0x40000000+i]);
+            for(int i=0; i<numLongs; i++)
+            {
+                for(int j=0; j<8; j++)
+                {
+                    printf("%02X", ((char*)memdev)[physAddr + 8*i + j]);
+                }
+                printf(" ");
+            }
+            printf("\n");
         }
+        void printerateModule(int physAddr)
+        {
+            for(int j=0; j<8; j++)
+            {
+                printf("%02X", ((char*)memdev)[physAddr + 0 + j]);
+            }
+            for(int j=0; j<8; j++)
+            {
+                printf("%02X", ((char*)memdev)[physAddr + 8 + j]);
+            }
+            for(int i=0; i<256; i++)
+            {
+                printf("%C", ((char*)memdev)[physAddr + 16 + i]);
+            }
+            printf("\n");
+        }
+
+        void printifyMany(int physOffset)
+        {
+            int offset = physOffset;
+            for(int i=0; offset < 0x8001000; i++)
+            {
+                printf("i is %d and offset is %016X\n", i, offset);
+                printerateModule(offset);
+                offset = physOffset + i * 0x1000000;
+            }
+            printf("\n");
+        }
+
+        printf("Here's the head of the linked list of modules:\n");
+        printerate(0xFB61E0, 2);
         printf("Okay, thanks.\n");
+        /*
+        printifyMany(0xC71288);
+        printerate(0xC71288, 6);
+        printerate(0xC70A80, 6);
+        printerate(0xD70280, 6);
+        */
 
-        struct list_head* module_list_head = (struct list_head*)(((uint8_t*)memdev)[0xFB61E0]);
+        bool isMatchModuleHead(int i)
+        {
+            if(
+                ((char*)memdev)[i + 0] == 0xE0 &&
+                ((char*)memdev)[i + 1] == 0x61 &&
+                ((char*)memdev)[i + 2] == 0xFB &&
+                ((char*)memdev)[i + 3] == 0x08 &&
+                ((char*)memdev)[i + 4] == 0x00 &&
+                ((char*)memdev)[i + 5] == 0x00 &&
+                ((char*)memdev)[i + 6] == 0xFF &&
+                ((char*)memdev)[i + 7] == 0xFF 
+                )
+            {
+                return true;
+            }
+            return false;
+        }
+        bool isMatchModule1(int i)
+        {
+            if(
+                ((char*)memdev)[i + 0] == 0x88 &&
+                ((char*)memdev)[i + 1] == 0x21 &&
+                ((char*)memdev)[i + 2] == 0x7C &&
+                ((char*)memdev)[i + 3] == 0x00 &&
+                ((char*)memdev)[i + 4] == 0x00 &&
+                ((char*)memdev)[i + 5] == 0x00 &&
+                ((char*)memdev)[i + 6] == 0xFF &&
+                ((char*)memdev)[i + 7] == 0xFF 
+                )
+            {
+                return true;
+            }
+            return false;
+        }
+        bool isMatchModule2(int i)
+        {
+            if(
+                ((char*)memdev)[i + 0] == 0x08 &&
+                ((char*)memdev)[i + 1] == 0xA0 &&
+                ((char*)memdev)[i + 2] == 0x7C &&
+                ((char*)memdev)[i + 3] == 0x00 &&
+                ((char*)memdev)[i + 4] == 0x00 &&
+                ((char*)memdev)[i + 5] == 0x00 &&
+                ((char*)memdev)[i + 6] == 0xFF &&
+                ((char*)memdev)[i + 7] == 0xFF 
+                )
+            {
+                return true;
+            }
+            return false;
+        }
+        bool isMatchModule3(int i)
+        {
+            if(
+                ((char*)memdev)[i + 0] == 0x08 &&
+                ((char*)memdev)[i + 1] == 0x20 &&
+                ((char*)memdev)[i + 2] == 0x7D &&
+                ((char*)memdev)[i + 3] == 0x00 &&
+                ((char*)memdev)[i + 4] == 0x00 &&
+                ((char*)memdev)[i + 5] == 0x00 &&
+                ((char*)memdev)[i + 6] == 0xFF &&
+                ((char*)memdev)[i + 7] == 0xFF 
+                )
+            {
+                return true;
+            }
+            return false;
+        }
 
-        struct list_head* iterator = module_list_head;
+
+        int module1index = 0;
+        int module2index = 0;
+        int module3index = 0;
+        for(int i=0; i<0x8001000; i++)
+        {
+            // match module 1
+            if(isMatchModuleHead(i) && isMatchModule2(i+8))
+            {
+                printf("Found Module 1 at %X\n", i);
+                printerateModule(i);
+                module1index = i;
+                continue;
+            }
+            if(isMatchModule1(i) && isMatchModule3(i+8))
+            {
+                printf("Found Module 2 at %X\n", i);
+                printerateModule(i);
+                module2index = i;
+                continue;
+            }
+            if(isMatchModule2(i) && isMatchModuleHead(i+8))
+            {
+                printf("Found Module 3 at %X\n", i);
+                printerateModule(i);
+                module3index = i;
+                continue;
+            }
+        }
+
+       
+        
+
 
         /*
+        struct list_head* module_list_head = (struct list_head*)(((uint8_t*)memdev)[0xFB61E0]);
+        struct list_head* iterator = module_list_head;
         for (int i=0; i<5; i++)
         {
             printf("\nhere's one:\n");
