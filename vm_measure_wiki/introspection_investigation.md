@@ -72,3 +72,41 @@ What does that mean?
 
 Okay, so what now?
 > Now we reach out to Ihor.
+
+## Trying to find sense
+Alright, so is there anything we can do while we reach out for expert help?
+> Yeah, we could just scan the memory snapshot for the other list-head structs.
+> All we need to do is reconstruct the linked list in this way.
+
+How can we do that?
+> We've discovered that the linked list is appended to on an insmod call. So
+> the list goes {Head, ModuleLoadedFirst, ModuleLoadedSecond,
+> ModuleLoadedThird, ...}.
+
+Okay, then we just need to know the address for each module. Is that possible?
+> Yes, in a sense. When we insert modules for the first time, they are always
+> in the same positions. So we can experiementally determine addresses in at
+> least some situtations.
+
+Does that not work for other situations?
+> It might have to do with the module size. All tested modules so far have been
+> of identical size. A large module might push the boundaries.
+
+## Grabbing the Rodata
+So we can get ourself into some finite number of modules. How do we get the rodata?
+> We can reverse-engineer the module struct spec because we compiled the kernel
+> ourselves. There are only 3 precompiler conditionals in our module.h, and
+> they are as follows:
+> * CONFIG-SYSFS = y
+> * CONFIG-UNUSED-SYMBOLS is NOT SET
+> * CONFIG-MODULE-SIG is NOT SET
+
+So we can just count forward in the data till we get what we want, right?
+> Yes and no. We'll be able to seek to the pointer which points to the modules
+> code and data, but there's no promise we'll be able to actually follow that
+> pointer.
+
+Why not?
+> The same trouble we had before: we don't know how to convert these virtual
+> addresses to physical addresses, which we require in order to index them in
+> our "memory snapshot."
