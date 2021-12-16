@@ -191,6 +191,98 @@ int run(void)
             }
         }
 
+        void GetModuleLayoutFromListHead(int physAddr)
+        {
+            int index = physAddr;
+            index += 16; // skip list_head
+            index += 256; // skip name
+            index += 96; //skip mkobj
+            index += 8; // skio modinfo_attrs
+            index += 8; // skip version
+            index += 8; // skip srcversion
+            index += 8; // skip holders_dir
+            index += 8; // skip syms
+            index += 8; // skip crcs
+            index += 4; // skip num_syms
+            index += 40; // skip struct mutex
+            index += 8; // skip kp
+            index += 4; // num_kp
+            index += 4; // num_gpl_syms
+            index += 8; // gpl_syms
+            index += 8; // gpl_crcs
+            index += 1; //async_probe_requested
+            index += 8; // gpl_future_syms
+            index += 8; // gpl_future_crcs
+            index += 4; // num_gpl_future_syms
+            index += 4; // num_exentries
+            index += 8; // extable
+            index += 8; // (*init*(void)
+
+            // okay now we're at core_layout, or at least should be
+            // let's print out som elines, to check
+            
+            // a correction ?
+            index += 3;
+
+            // by guess, based on source code
+            //printerate(index, 3);
+
+            //by inspection
+            printerate(physAddr + 47 * 8, 3);
+        }
+
+        void PrintEverythingUpToModuleLayoutFromListHead(int physAddr)
+        {
+            int size = 0;
+            size += 16; // skip list_head
+            size += 256; // skip name
+            size += 96; //skip mkobj
+            size += 8; // skio modinfo_attrs
+            size += 8; // skip version
+            size += 8; // skip srcversion
+            size += 8; // skip holders_dir
+            size += 8; // skip syms
+            size += 8; // skip crcs
+            size += 4; // skip num_syms
+            size += 40; // skip struct mutex
+            size += 8; // skip kp
+            size += 4; // num_kp
+            size += 4; // num_gpl_syms
+            size += 8; // gpl_syms
+            size += 8; // gpl_crcs
+            size += 1; //async_probe_requested
+            size += 8; // gpl_future_syms
+            size += 8; // gpl_future_crcs
+            size += 4; // num_gpl_future_syms
+            size += 4; // num_exentries
+            size += 8; // extable
+            size += 8; // (*init*(void)
+
+            // corection
+            size += 3;
+            // sizeof module_layout
+            size += 6;
+
+            for(int i=0; i < (size / 64) + 1; i++)
+            {
+                printerate(physAddr + i*64, 8);
+            }
+
+        }
+
+
+
+        printf("Module 1 Layout: ");
+        GetModuleLayoutFromListHead(module1index);
+        printf("Module 2 Layout: ");
+        GetModuleLayoutFromListHead(module2index);
+        printf("Module 3 Layout: ");
+        GetModuleLayoutFromListHead(module3index);
+
+        /*
+        printf("Module 1 'Full' Data:\n");
+        PrintEverythingUpToModuleLayoutFromListHead(module1index);
+        */
        
         
 

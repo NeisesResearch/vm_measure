@@ -110,3 +110,13 @@ Why not?
 > The same trouble we had before: we don't know how to convert these virtual
 > addresses to physical addresses, which we require in order to index them in
 > our "memory snapshot."
+
+## Rodata pointer problem
+Is it what you thought?
+> Yes, we've uncovered the offset to the module-layout struct, whose first
+> entry is a pointer to the module's data. These pointers so uncovered agree
+> with the data we can find via `cat /proc/modules`. Unfortunately however, yes, we don't
+> know how to follow this pointer.
+
+So now what?
+> Now we're back to waiting and thinking. Maybe we should write.
