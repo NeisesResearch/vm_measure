@@ -120,3 +120,27 @@ Is it what you thought?
 
 So now what?
 > Now we're back to waiting and thinking. Maybe we should write.
+
+## A potential solution
+I hear you have good news?
+> I think so. The problem is I don't know the exact form of the page tables in
+> this version of Linux. But I've found two kernel symbols: page-mapping and
+> page-mapped.
+
+What are those symbols?
+> They point to address-space structs as declared in include/linux/mm.h and
+> defined in include/linux/fs.h. However, this information doesn't really seem
+> to help. But I had an idea while I slept.
+
+Did you seriously?
+> Yes. If the page table is just a mapping of virtual addresses to physical
+> addresses, I should be able to scan the memory snapshot for these addresses,
+> right?
+
+That makes pretty good sense. Are page tables actually like that?
+> Unfortunately no. In fact, I'm having a hard time understanding paging in
+> Linux.
+
+## Some other idea
+Now what?
+
