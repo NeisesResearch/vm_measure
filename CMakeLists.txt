@@ -73,7 +73,7 @@ AddExternalProjFilesToOverlay(signal-module
 ${CMAKE_CURRENT_BINARY_DIR}/signal-module overlay "lib/modules/4.9.275/kernel/drivers/vmm"
     FILES signal.ko)
 
-# Add the external signal module project
+# Add the external poison module project
 ExternalProject_Add(poison-module
     SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/modules
     BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/poison-module

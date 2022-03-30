@@ -211,7 +211,24 @@ static int connector_pci_probe(struct pci_dev *dev,
     void* entryAddr3 = (void*)0xFFFF00000913D000;
     printk("You input vaddr: %p\n", entryAddr3);
     printk("I give back paddr: %p\n", virt_to_phys(entryAddr3));
-	
+
+    /*
+    printk("enum module_state size is %d\n", sizeof(enum module_state));
+    printk("struct list_head size is %d\n", sizeof(struct list_head));
+    printk("struct module_kobject size is %d\n", sizeof(struct module_kobject));
+    printk("struct module_attribute size is %d\n", sizeof(struct module_attribute));
+    printk("const char* size is %d\n", sizeof(const char*));
+    printk("struct kobject size is %d\n", sizeof(struct kobject));
+    printk("const struct kernel_symbol size is %d\n", sizeof(const struct kernel_symbol));
+    printk("const unsigned long* size is %d\n", sizeof(const unsigned long*));
+    printk("unsigned int size is %d\n", sizeof(unsigned int));
+    printk("struct mutex size is %d\n", sizeof(struct mutex));
+    printk("struct kernel_param size is %d\n", sizeof(struct kernel_param));
+    printk("bool size is %d\n", sizeof(bool));
+    printk("struct exception_table_entry* size is %d\n", sizeof(struct exception_table_entry*));
+    printk("char* size is %d\n", sizeof(char*));
+    printk("struct module_layout size is %d\n", sizeof(struct module_layout));
+    */
 
     return 0;
 unmap_bars:
