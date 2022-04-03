@@ -37,6 +37,7 @@ int run(void)
         printf("\n");
         printf("Okay now for that physical address you computed...\n");
         printf("That is, the modules list_head...\n");
+        /*
         char bingo = ((char*)memdev)[0xFB61E0];
         for(int i=0; i<16; i++)
         {
@@ -44,13 +45,13 @@ int run(void)
             printf("%02X", ((char*)memdev)[0xFB61E0+i]);
         }
         printf("\n");
+        */
         uint64_t* list_head_ptr = (uint64_t*)(((char*)memdev)+0xFB61E0);
-
         printf("%016X\n", list_head_ptr[0]);
         printf("%016X\n", list_head_ptr[1]);
 
+        /*
         printf("\nChar was %02X\n", bingo);
-
         printf("Here's some bytes:\n");
         printf("%02X", ((char*)memdev)[0xC71288+0]);
         printf("%02X", ((char*)memdev)[0xC71288+1]);
@@ -59,8 +60,10 @@ int run(void)
         printf("%02X", ((char*)memdev)[0xC71288+4]);
         printf("%02X", ((char*)memdev)[0xC71288+5]);
         printf("%02X", ((char*)memdev)[0xC71288+6]);
+        */
 
         
+        /*
         printf("\nHere's some bytes:\n");
         for(int i=0; i<48; i++)
         {
@@ -73,9 +76,10 @@ int run(void)
             if(i%48==0){printf("\n");}
             printf("%02X", ((char*)memdev)[0x47FFF803-0x40000000+0x188+i]);
         }
-
         printf("\nOkay, thanks.\n");
+        */
 
+        /*
         for(int i=0; i<0xFFF; i+=8)
         {
             if(
@@ -98,7 +102,9 @@ int run(void)
                 printf("\n");
             }
         }
+        */
 
+        /*
         for(int i=0; i<0xFFF; i+=8)
         {
             if(
@@ -120,7 +126,7 @@ int run(void)
                 printf("\n");
             }
         }
-
+        */
 
         for(int i=0; i<0x5FFFFFF; i++)
         {
@@ -141,7 +147,6 @@ int run(void)
             }
         }
 
-        printf("search for physical page number in table\n");
         /*
         ** This search turns up nothing because (I think) the table is in 5-hex
         ** segments, meaning that to iterate over it correctly would be to jump
@@ -151,6 +156,8 @@ int run(void)
         **
         **
         */
+        /*
+        printf("search for physical page number in table\n");
         for(int i=0; i<0xFFFFF; i+=1)
         {
             if(
@@ -168,12 +175,77 @@ int run(void)
             }
         }
         printf("next\n");
+        */
 
-        //char* TTable = ((char*)memdev)+0x4113D000-0x4000000;
-        char* TTable = ((char*)memdev)+0x0113D000;
-        uint64_t* TranslationTable = (uint64_t*)TTable;
-        printf("What about these bytes? %X\n", TranslationTable[0x7C2]);
+        char* PGDTablePtr = ((char*)memdev)+0x4113D000 - RAM_BASE;
+        uint64_t* PGDTable = (uint64_t*)PGDTablePtr;
+        printf("Here is the PGD\n");
+        for(int i=0; i<0x4; i++)
+        {
+            printf("%016X\n", PGDTable[i]);
+        }
+        printf("Get PUD base address from PGD\n");
+        // TODO investigate these bits we drop from every table entry
+        uint64_t pudAddr = (PGDTable[0] & 0x00000000FFFFF000) - RAM_BASE;
+        printf("pudAddr is %016X\n", pudAddr);
+        
+        char* pudTablePtr = ((char*)memdev)+pudAddr;
+        uint64_t* PUDTable = (uint64_t*)pudTablePtr;
+        printf("Here is the PUD\n");
+        for(int i=0; i<0x4; i++)
+        {
+            printf("%X: %016X\n", i, PUDTable[i]);
+        }
+        uint64_t pmdAddr = (PUDTable[0] & 0x00000000FFFFF000) - RAM_BASE;
+        printf("pmdAddr is %016X\n", pmdAddr);
 
+        char* pmdTablePtr = ((char*)memdev)+pmdAddr;
+        uint64_t* pmdTable = (uint64_t*)pmdTablePtr;
+        printf("Here is the pmd\n");
+        for(int i=0; i<0x4; i++)
+        {
+            printf("%X: %016X\n", i, pmdTable[i]);
+        }
+        uint64_t pteAddr = (pmdTable[3] & 0x00000000FFFFF000) - RAM_BASE;
+        printf("pteAddr is %016X\n", pteAddr);
+
+        char* pteTablePtr = ((char*)memdev)+pteAddr;
+        uint64_t* pteTable = (uint64_t*)pteTablePtr;
+        printf("Here is the pte at 1C2\n");
+        for(int i=0x1C2; i<0x1C6; i++)
+        {
+            printf("%X: %016X\n", i, pteTable[i]);
+        }
+        uint64_t offsetAddr = (pteTable[0x1C2] & 0x00000000FFFFF000) - RAM_BASE;
+        printf("offsetAddr is %016X\n", offsetAddr);
+
+
+        uint64_t finalPaddr = offsetAddr | 0x188;
+        printf("paddr is %016X\n", finalPaddr + RAM_BASE);
+
+        /*
+        char* listHeadPtr = ((char*)memdev)+finalPaddr;
+        (struct list_head*) moduleLH = (struct list_head*)listHeadPtr;
+        */
+
+        for(int j=0; j<24; j++)
+        {
+            if(j%8==0&&j>0){printf("\n");}
+            if(j<16){printf("%02X", ((char*)memdev)[finalPaddr + j]);}
+            else{printf("%C", ((char*)memdev)[finalPaddr + j]);}
+        }
+
+        printf("\nTable walk complete\n");
+
+
+        /*
+        printf("What about these bytes 5? %X\n", TranslationTable2[0x0]);
+        printf("What about these bytes 6? %X\n", TranslationTable2[0x7]);
+        printf("What about these bytes 7? %X\n", TranslationTable2[0x7C]);
+        printf("What about these bytes 8? %X\n", TranslationTable2[0x7C2]);
+        */
+
+        /*
         printf("good bytes: %02X %02x %02X %02X\n", ((char*)memdev)[0x4113D000-0x40000000],((char*)memdev)[0x4113D000-0x40000000+1],((char*)memdev)[0x4113D000-0x40000000+2], ((char*)memdev)[0x4113D000-0x40000000+3]);
         printf("bytes: %X\n", TranslationTable[0]);
         printf("bytes: %X\n", TranslationTable[0]>>0  & 0xFFF);
@@ -182,7 +254,9 @@ int run(void)
         printf("bytes: %X\n", TranslationTable[0]>>12 & 0xFFF);
         printf("bytes: %X\n", TranslationTable[0]>>16 & 0xFFF);
         printf("bytes: %X\n", TranslationTable[0]>>20 & 0xFFF);
+        */
 
+        /*
         for(int i=0; i<0xFFFFF; i++)
         {
             if(
@@ -199,14 +273,13 @@ int run(void)
                 printf("\n");
             }
         }
-
-        
-
+        */
 
 
+        /*
         struct list_head* module_list_head = (struct list_head*)(((uint8_t*)memdev)[0xFB61E0]);
-
         struct list_head* iterator = module_list_head;
+        */
 
         /*
         printf("\n");

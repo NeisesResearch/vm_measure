@@ -211,6 +211,25 @@ static int connector_pci_probe(struct pci_dev *dev,
     void* entryAddr3 = (void*)0xFFFF00000913D000;
     printk("You input vaddr: %p\n", entryAddr3);
     printk("I give back paddr: %p\n", virt_to_phys(entryAddr3));
+    void* entryAddr4 = (void*)0xFFFF000047FFF803;
+    printk("You input vaddr: %p\n", entryAddr4);
+    printk("I give back paddr: %p\n", virt_to_phys(entryAddr4));
+    printk("==============================\n");
+    printk("Sizeof pmd_t is %X\n", sizeof(pmd_t));
+    printk("Sizeof pte_t is %X\n", sizeof(pte_t));
+    printk("==============================\n");
+    printk("CONFIG_PGTABLE_LEVELS is %d\n", CONFIG_PGTABLE_LEVELS);
+    printk("page_mask is %X\n", PAGE_MASK);
+    printk("pmd_mask is %X\n", PMD_MASK);
+    printk("pud_mask is %X\n", PUD_MASK);
+    printk("pgdir_mask is %X\n", PGDIR_MASK);
+    printk("page_SHIFT is %d\n", PAGE_SHIFT);
+    printk("pmd_SHIFT is %d\n", PMD_SHIFT);
+    printk("pud_SHIFT is %d\n", PUD_SHIFT);
+    printk("pgdir_SHIFT is %d\n", PGDIR_SHIFT);
+    printk("==============================\n");
+
+
 
     /*
     printk("enum module_state size is %d\n", sizeof(enum module_state));
