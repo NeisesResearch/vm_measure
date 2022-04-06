@@ -9,6 +9,7 @@
 
 #define RAM_BASE 0x40000000
 #define N 10
+#define LIST_HEAD_ADDR 0xFB61E0
 uint32_t fib_buf[N];
 
 struct list_head {
@@ -37,249 +38,98 @@ int run(void)
         printf("\n");
         printf("Okay now for that physical address you computed...\n");
         printf("That is, the modules list_head...\n");
-        /*
-        char bingo = ((char*)memdev)[0xFB61E0];
-        for(int i=0; i<16; i++)
-        {
-            if(i%8==0&&i!=0){printf("\n");}
-            printf("%02X", ((char*)memdev)[0xFB61E0+i]);
-        }
-        printf("\n");
-        */
-        uint64_t* list_head_ptr = (uint64_t*)(((char*)memdev)+0xFB61E0);
+        uint64_t* list_head_ptr = (uint64_t*)(((char*)memdev)+LIST_HEAD_ADDR);
         printf("%016X\n", list_head_ptr[0]);
         printf("%016X\n", list_head_ptr[1]);
 
-        /*
-        printf("\nChar was %02X\n", bingo);
-        printf("Here's some bytes:\n");
-        printf("%02X", ((char*)memdev)[0xC71288+0]);
-        printf("%02X", ((char*)memdev)[0xC71288+1]);
-        printf("%02X", ((char*)memdev)[0xC71288+2]);
-        printf("%02X", ((char*)memdev)[0xC71288+3]);
-        printf("%02X", ((char*)memdev)[0xC71288+4]);
-        printf("%02X", ((char*)memdev)[0xC71288+5]);
-        printf("%02X", ((char*)memdev)[0xC71288+6]);
-        */
+        uint64_t TranslationTableWalk(uint64_t inputAddr)
+        {
+            bool isDebugLog = false;
+            uint64_t PGDindex = (inputAddr & 0x0000FF8000000000) >> 39;
+            uint64_t PUDindex = (inputAddr & 0x0000007FC0000000) >> 30;
+            uint64_t PMDindex = (inputAddr & 0x000000003FE00000) >> 21;
+            uint64_t PTEindex = (inputAddr & 0x00000000001FF000) >> 12;
+            uint64_t PAGindex = (inputAddr & 0x0000000000000FFF) >>  0;
 
-        
-        /*
-        printf("\nHere's some bytes:\n");
-        for(int i=0; i<48; i++)
-        {
-            if(i%48==0){printf("\n");}
-            printf("%02X", ((char*)memdev)[0x4113D000-0x40000000+0x7C2+i]);
-        }
-        printf("\nHere's some bytes:\n");
-        for(int i=0; i<48; i++)
-        {
-            if(i%48==0){printf("\n");}
-            printf("%02X", ((char*)memdev)[0x47FFF803-0x40000000+0x188+i]);
-        }
-        printf("\nOkay, thanks.\n");
-        */
-
-        /*
-        for(int i=0; i<0xFFF; i+=8)
-        {
-            if(
-                   ((char*)memdev)[0x4113D000-0x40000000+i+0] > 0
-                || ((char*)memdev)[0x4113D000-0x40000000+i+1] > 0
-                || ((char*)memdev)[0x4113D000-0x40000000+i+2] > 0
-                || ((char*)memdev)[0x4113D000-0x40000000+i+3] > 0
-                || ((char*)memdev)[0x4113D000-0x40000000+i+4] > 0
-                || ((char*)memdev)[0x4113D000-0x40000000+i+5] > 0
-                || ((char*)memdev)[0x4113D000-0x40000000+i+6] > 0
-                || ((char*)memdev)[0x4113D000-0x40000000+i+7] > 0
-                )
+            if(isDebugLog)
             {
-                printf("Found possible address at offset %X\n", i);
-                //printf("%p\n", (void*)((char*)memdev)[0x4113D000-0x40000000+i]);
-                for(int j=0; j<8; j++)
+                printf("input %016X,\nPGDindex %016X,\nPUDindex %016X,\nPMDindex %016X,\nPTEindex %016X\n", inputAddr, PGDindex, PUDindex, PMDindex, PTEindex); 
+                printf("PGDindex %d,\nPUDindex %d,\nPMDindex %d,\nPTEindex %X\n", PGDindex, PUDindex, PMDindex, PTEindex); 
+            }
+            char* PGDTablePtr = ((char*)memdev)+0x4113D000 - RAM_BASE;
+            uint64_t* PGDTable = (uint64_t*)PGDTablePtr;
+            uint64_t pudAddr = (PGDTable[PGDindex] & 0x00000000FFFFF000) - RAM_BASE;
+            if(isDebugLog)
+            {
+                printf("Here is the PGD\n");
+                for(int i=0; i<0x4; i++)
                 {
-                    printf("%02X", ((char*)memdev)[0x4113D000-0x40000000+i+j]);
+                    printf("%016X\n", PGDTable[i]);
                 }
-                printf("\n");
+                printf("Get PUD base address from PGD\n");
+                printf("pudAddr is %016X\n", pudAddr);
             }
-        }
-        */
-
-        /*
-        for(int i=0; i<0xFFF; i+=8)
-        {
-            if(
-                   ((char*)memdev)[0x47fff803-0x40000000+i+0] > 0
-                || ((char*)memdev)[0x47fff803-0x40000000+i+1] > 0
-                || ((char*)memdev)[0x47fff803-0x40000000+i+2] > 0
-                || ((char*)memdev)[0x47fff803-0x40000000+i+3] > 0
-                || ((char*)memdev)[0x47fff803-0x40000000+i+4] > 0
-                || ((char*)memdev)[0x47fff803-0x40000000+i+5] > 0
-                || ((char*)memdev)[0x47fff803-0x40000000+i+6] > 0
-                || ((char*)memdev)[0x47fff803-0x40000000+i+7] > 0
-                )
+            // TODO investigate these bits we drop from every table entry
+            char* pudTablePtr = ((char*)memdev)+pudAddr;
+            uint64_t* PUDTable = (uint64_t*)pudTablePtr;
+            uint64_t pmdAddr = (PUDTable[PUDindex] & 0x00000000FFFFF000) - RAM_BASE;
+            if(isDebugLog)
             {
-                printf("Found possible address at offset %X\n", i);
-                for(int j=0; j<8; j++)
+                printf("Here is the PUD\n");
+                for(int i=0; i<0x4; i++)
                 {
-                    printf("%02X", ((char*)memdev)[0x47FFF803-0x40000000+i+j]);
+                    printf("%X: %016X\n", i, PUDTable[i]);
                 }
-                printf("\n");
+                printf("pmdAddr is %016X\n", pmdAddr);
             }
-        }
-        */
-
-        for(int i=0; i<0x5FFFFFF; i++)
-        {
-            if(
-                   ((char*)memdev)[0x4113D000-0x40000000+i+0] == 0x08
-                && ((char*)memdev)[0x4113D000-0x40000000+i+1] == 0xA0
-                && ((char*)memdev)[0x4113D000-0x40000000+i+2] == 0x7C
-                )
+            char* pmdTablePtr = ((char*)memdev)+pmdAddr;
+            uint64_t* pmdTable = (uint64_t*)pmdTablePtr;
+            uint64_t pteAddr = (pmdTable[PMDindex] & 0x00000000FFFFF000) - RAM_BASE;
+            if(isDebugLog)
             {
-                // subtract 8 because we match the second of two addresses
-                printf("Found a match at PA %X\n", 0x4113D000+i-8);
-                for(int j=0; j<24; j++)
+                printf("Here is the pmd\n");
+                for(int i=0; i<0x4; i++)
                 {
-                    if(j%8==0&&j>0){printf("\n");}
-                    printf("%02X", ((char*)memdev)[0x4113D000-0x40000000-8+i+j]);
+                    printf("%X: %016X\n", i, pmdTable[i]);
                 }
-                printf("\n");
+                printf("pteAddr is %016X\n", pteAddr);
             }
-        }
-
-        /*
-        ** This search turns up nothing because (I think) the table is in 5-hex
-        ** segments, meaning that to iterate over it correctly would be to jump
-        ** 2.5 bytes every time, which obviously won't do.
-        ** We really need to search for the 3hex string 455, which turns up
-        ** over and over in our experiments.
-        **
-        **
-        */
-        /*
-        printf("search for physical page number in table\n");
-        for(int i=0; i<0xFFFFF; i+=1)
-        {
-            if(
-                      ((char*)memdev)[0x4113D000-0x40000000+i+0] == 0x04
-                   && ((char*)memdev)[0x4113D000-0x40000000+i+1] == 0x55
-                )
+            char* pteTablePtr = ((char*)memdev)+pteAddr;
+            uint64_t* pteTable = (uint64_t*)pteTablePtr;
+            uint64_t offsetAddr = (pteTable[PTEindex] & 0x00000000FFFFF000) - RAM_BASE;
+            uint64_t finalPaddr = offsetAddr | PAGindex;
+            if(isDebugLog)
             {
-                printf("Found possible match at offset %X\n", i);
-                //printf("%p\n", (void*)((char*)memdev)[0x4113D000-0x40000000+i]);
-                for(int j=0; j<4; j++)
+                printf("Here is the pte at 1C2\n");
+                for(int i=0x1C2; i<0x1C6; i++)
                 {
-                    printf("%02X", ((char*)memdev)[0x4113D000-0x40000000+i+j]);
+                    printf("%X: %016X\n", i, pteTable[i]);
                 }
-                printf("\n");
+                printf("offsetAddr is %016X\n", offsetAddr);
+                printf("Output Address is %016X\n", finalPaddr + RAM_BASE);
+                printf("\nTable walk complete\n");
             }
-        }
-        printf("next\n");
-        */
-
-        char* PGDTablePtr = ((char*)memdev)+0x4113D000 - RAM_BASE;
-        uint64_t* PGDTable = (uint64_t*)PGDTablePtr;
-        printf("Here is the PGD\n");
-        for(int i=0; i<0x4; i++)
-        {
-            printf("%016X\n", PGDTable[i]);
-        }
-        printf("Get PUD base address from PGD\n");
-        // TODO investigate these bits we drop from every table entry
-        uint64_t pudAddr = (PGDTable[0] & 0x00000000FFFFF000) - RAM_BASE;
-        printf("pudAddr is %016X\n", pudAddr);
-        
-        char* pudTablePtr = ((char*)memdev)+pudAddr;
-        uint64_t* PUDTable = (uint64_t*)pudTablePtr;
-        printf("Here is the PUD\n");
-        for(int i=0; i<0x4; i++)
-        {
-            printf("%X: %016X\n", i, PUDTable[i]);
-        }
-        uint64_t pmdAddr = (PUDTable[0] & 0x00000000FFFFF000) - RAM_BASE;
-        printf("pmdAddr is %016X\n", pmdAddr);
-
-        char* pmdTablePtr = ((char*)memdev)+pmdAddr;
-        uint64_t* pmdTable = (uint64_t*)pmdTablePtr;
-        printf("Here is the pmd\n");
-        for(int i=0; i<0x4; i++)
-        {
-            printf("%X: %016X\n", i, pmdTable[i]);
-        }
-        uint64_t pteAddr = (pmdTable[3] & 0x00000000FFFFF000) - RAM_BASE;
-        printf("pteAddr is %016X\n", pteAddr);
-
-        char* pteTablePtr = ((char*)memdev)+pteAddr;
-        uint64_t* pteTable = (uint64_t*)pteTablePtr;
-        printf("Here is the pte at 1C2\n");
-        for(int i=0x1C2; i<0x1C6; i++)
-        {
-            printf("%X: %016X\n", i, pteTable[i]);
-        }
-        uint64_t offsetAddr = (pteTable[0x1C2] & 0x00000000FFFFF000) - RAM_BASE;
-        printf("offsetAddr is %016X\n", offsetAddr);
-
-
-        uint64_t finalPaddr = offsetAddr | 0x188;
-        printf("paddr is %016X\n", finalPaddr + RAM_BASE);
-
-        /*
-        char* listHeadPtr = ((char*)memdev)+finalPaddr;
-        (struct list_head*) moduleLH = (struct list_head*)listHeadPtr;
-        */
-
-        for(int j=0; j<24; j++)
-        {
-            if(j%8==0&&j>0){printf("\n");}
-            if(j<16){printf("%02X", ((char*)memdev)[finalPaddr + j]);}
-            else{printf("%C", ((char*)memdev)[finalPaddr + j]);}
+            return finalPaddr;
         }
 
-        printf("\nTable walk complete\n");
-
-
-        /*
-        printf("What about these bytes 5? %X\n", TranslationTable2[0x0]);
-        printf("What about these bytes 6? %X\n", TranslationTable2[0x7]);
-        printf("What about these bytes 7? %X\n", TranslationTable2[0x7C]);
-        printf("What about these bytes 8? %X\n", TranslationTable2[0x7C2]);
-        */
-
-        /*
-        printf("good bytes: %02X %02x %02X %02X\n", ((char*)memdev)[0x4113D000-0x40000000],((char*)memdev)[0x4113D000-0x40000000+1],((char*)memdev)[0x4113D000-0x40000000+2], ((char*)memdev)[0x4113D000-0x40000000+3]);
-        printf("bytes: %X\n", TranslationTable[0]);
-        printf("bytes: %X\n", TranslationTable[0]>>0  & 0xFFF);
-        printf("bytes: %X\n", TranslationTable[0]>>4  & 0xFFF);
-        printf("bytes: %X\n", TranslationTable[0]>>8  & 0xFFF);
-        printf("bytes: %X\n", TranslationTable[0]>>12 & 0xFFF);
-        printf("bytes: %X\n", TranslationTable[0]>>16 & 0xFFF);
-        printf("bytes: %X\n", TranslationTable[0]>>20 & 0xFFF);
-        */
-
-        /*
-        for(int i=0; i<0xFFFFF; i++)
+        printf("Collect module pointers\n");
+        uint64_t module_pointer = TranslationTableWalk(list_head_ptr[0]);
+        while(module_pointer != LIST_HEAD_ADDR)
         {
-            if(
-                      (TranslationTable[i]>> 0)  & 0xFFF == 0x554
-                   || (TranslationTable[i]>> 4)  & 0xFFF == 0x554
-                   || (TranslationTable[i]>> 8)  & 0xFFF == 0x554
-                   || (TranslationTable[i]>> 12) & 0xFFF == 0x554
-                   || (TranslationTable[i]>> 16) & 0xFFF == 0x554
-                   || (TranslationTable[i]>> 20) & 0xFFF == 0x554
-                )
+            //printf("top. module_pointer is %016X\n", module_pointer);
+            for(int j=0; j<24; j++)
             {
-                printf("Found possible match at offset %X\n", i);
-                printf("bytes: %X\n", TranslationTable[i]);
-                printf("\n");
+                if(j%8==0&&j>0){printf("\n");}
+                if(j<16){printf("%02X", ((char*)memdev)[module_pointer + j]);}
+                else{printf("%C", ((char*)memdev)[module_pointer + j]);}
             }
+            printf("\n");
+            char* modBytePtr = ((char*)memdev)+module_pointer;
+            uint64_t* modLongPtr = (uint64_t*)modBytePtr;
+            module_pointer = TranslationTableWalk(modLongPtr[0]);
         }
-        */
 
 
-        /*
-        struct list_head* module_list_head = (struct list_head*)(((uint8_t*)memdev)[0xFB61E0]);
-        struct list_head* iterator = module_list_head;
-        */
 
         /*
         printf("\n");
