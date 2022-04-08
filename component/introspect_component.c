@@ -36,11 +36,6 @@ int run(void)
             printf("camkes_fib[%d]@%p = %d, ", i, (fib_buf + i), fib_buf[i]);
         }
         printf("\n");
-        printf("Okay now for that physical address you computed...\n");
-        printf("That is, the modules list_head...\n");
-        uint64_t* list_head_ptr = (uint64_t*)(((char*)memdev)+LIST_HEAD_ADDR);
-        printf("%016X\n", list_head_ptr[0]);
-        printf("%016X\n", list_head_ptr[1]);
 
         uint64_t TranslationTableWalk(uint64_t inputAddr)
         {
@@ -113,22 +108,168 @@ int run(void)
         }
 
         printf("Collect module pointers\n");
+        /* modulePtrs is a list of offsets into memdev that refer to kernel
+        ** modules. They are physical memory addresses with the RAM_BASE
+        ** already subtracted. Assume there are no more than 128 modules.
+        */
+        uint64_t modulePtrs[128];
+        for(int i=0; i<128; i++)
+        {
+            modulePtrs[i] = 0;
+        }
+        int numModulePtrs = 0;
+
+        uint64_t* list_head_ptr = (uint64_t*)(((char*)memdev)+LIST_HEAD_ADDR);
         uint64_t module_pointer = TranslationTableWalk(list_head_ptr[0]);
         while(module_pointer != LIST_HEAD_ADDR)
         {
-            //printf("top. module_pointer is %016X\n", module_pointer);
-            for(int j=0; j<24; j++)
-            {
-                if(j%8==0&&j>0){printf("\n");}
-                if(j<16){printf("%02X", ((char*)memdev)[module_pointer + j]);}
-                else{printf("%C", ((char*)memdev)[module_pointer + j]);}
-            }
-            printf("\n");
+            modulePtrs[numModulePtrs] = module_pointer;
+            numModulePtrs++;
             char* modBytePtr = ((char*)memdev)+module_pointer;
             uint64_t* modLongPtr = (uint64_t*)modBytePtr;
             module_pointer = TranslationTableWalk(modLongPtr[0]);
         }
 
+        void printerate(int physAddr, int numLongs)
+        {
+            uint64_t* printerHead = (uint64_t*)((char*)memdev+physAddr);
+            for(int i=0; 8*i < numLongs; i++)
+            {
+                for(int j=0; j<8; j++)
+                {
+                    printf("%016X ", printerHead[i*8+j]);
+                    //printf("%02X", ((char*)memdev)[physAddr + 8*i + j]);
+                }
+                printf("\n");
+            }
+            printf("\n");
+        }
+
+        void printerateChars(int physAddr, int numBytes)
+        {
+            char* printerHead = ((char*)memdev+physAddr);
+            for(int i=0; i < numBytes; i++)
+            {
+                if(i%64==0&&i!=0){printf("\n");}
+                printf("%c ", printerHead[i]);
+            }
+            printf("\n");
+        }
+
+        struct module_layout {
+            uint64_t base;
+            unsigned int size;
+            unsigned int text_size;
+            unsigned int ro_size;
+            unsigned int ro_after_init_size;
+        };
+
+        struct module_layout GetModuleLayoutFromListHead(int physAddr)
+        {
+            int index = physAddr;
+            index += 16; // skip list_head
+            index += 56; // skip name
+            index += 96; //skip mkobj
+            index += 8; // skio modinfo_attrs
+            index += 8; // skip version
+            index += 8; // skip srcversion
+            index += 8; // skip holders_dir
+            index += 8; // skip syms
+            index += 8; // skip crcs
+            index += 4; // skip num_syms
+            index += 40; // skip struct mutex
+            index += 8; // skip kp
+            index += 4; // num_kp
+            index += 4; // num_gpl_syms
+            index += 8; // gpl_syms
+            index += 8; // gpl_crcs
+            index += 1; //async_probe_requested
+            index += 8; // gpl_future_syms
+            index += 8; // gpl_future_crcs
+            index += 4; // num_gpl_future_syms
+            index += 4; // num_exentries
+            index += 8; // extable
+            index += 8; // (*init*(void)
+
+            // okay now we're at core_layout, or at least should be
+            // let's print out som elines, to check
+            
+            // a correction ?
+            index += 3;
+
+            // by guess, based on source code
+            //printerate(index, 3);
+
+
+
+            //by inspection
+            //printerate(physAddr + 47 * 8, 3);
+            struct module_layout thisModule;
+            thisModule.base = ((uint64_t*)((char*)memdev+physAddr+47*8))[0];
+            thisModule.size = ((unsigned int*)((char*)memdev+physAddr+47*8))[2];
+            thisModule.text_size = ((unsigned int*)((char*)memdev+physAddr+47*8))[3];
+            thisModule.ro_size = ((unsigned int*)((char*)memdev+physAddr+47*8))[4];
+            thisModule.ro_after_init_size = ((unsigned int*)((char*)memdev+physAddr+47*8))[5];
+            return thisModule;
+        }
+
+        struct module_measurement {
+            char module_name[56];
+            uint8_t* ro_data;
+        }
+
+        void InterpretKernelModule(uint64_t inputAddress)
+        {
+            printf("module address: %016X\n", inputAddress);
+            //printf("top. module_pointer is %016X\n", module_pointer);
+            /*
+            for(int j=0; j<24; j++)
+            {
+                if(j%8==0&&j>0){printf("\n");}
+                if(j<16){printf("%02X", ((char*)memdev)[inputAddress + j]);}
+                else{printf("%C", ((char*)memdev)[inputAddress + j]);}
+            }
+            printf("\n");
+            */
+
+            char module_name[56];
+            for(int j=16; j<56+16; j++)
+            {
+                module_name[j-16] = ((char*)memdev)[inputAddress+j];
+            }
+            printf("Module Name: ");
+            for(int j=0; j<56; j++)
+            {
+                printf("%c", module_name[j]);
+            }
+
+            struct module_layout thisModuleLayout = GetModuleLayoutFromListHead((int)inputAddress);
+            uint64_t basePtr = TranslationTableWalk(thisModuleLayout.base);
+            /*
+            printf("base: %016X\n", thisModuleLayout.base);
+            printf("size: %08X\n", thisModuleLayout.size);
+            printf("text size: %08X\n", thisModuleLayout.text_size);
+            printf("ro size: %08X\n", thisModuleLayout.ro_size);
+            printf("ro after init size: %08X\n", thisModuleLayout.ro_after_init_size);
+            printf("base paddr: %016X\n", basePtr);
+            */
+            uint8_t* rodata = malloc(thisModuleLayout.ro_size);
+            for(int i=0; i<thisModuleLayout.ro_size; i++)
+            {
+                rodata[i] = ((char*)memdev)[basePtr+i];
+            }
+
+            // can print out the rodata here to see strings from the source
+            //printerateChars(basePtr, thisModuleLayout.ro_size);
+        }
+
+        for(int i=0; i<128; i++)
+        {
+            if(modulePtrs[i] != 0)
+            {
+                InterpretKernelModule(modulePtrs[i]);
+            }
+        }
 
 
         /*
@@ -139,18 +280,6 @@ int run(void)
         printf("Char was %02X\n", bingo);
         printf("Here's some bytes:\n");
 
-        void printerate(int physAddr, int numLongs)
-        {
-            for(int i=0; i<numLongs; i++)
-            {
-                for(int j=0; j<8; j++)
-                {
-                    printf("%02X", ((char*)memdev)[physAddr + 8*i + j]);
-                }
-                printf(" ");
-            }
-            printf("\n");
-        }
         void printerateModule(int physAddr)
         {
             for(int j=0; j<8; j++)
@@ -287,45 +416,6 @@ int run(void)
             }
         }
 
-        void GetModuleLayoutFromListHead(int physAddr)
-        {
-            int index = physAddr;
-            index += 16; // skip list_head
-            index += 256; // skip name
-            index += 96; //skip mkobj
-            index += 8; // skio modinfo_attrs
-            index += 8; // skip version
-            index += 8; // skip srcversion
-            index += 8; // skip holders_dir
-            index += 8; // skip syms
-            index += 8; // skip crcs
-            index += 4; // skip num_syms
-            index += 40; // skip struct mutex
-            index += 8; // skip kp
-            index += 4; // num_kp
-            index += 4; // num_gpl_syms
-            index += 8; // gpl_syms
-            index += 8; // gpl_crcs
-            index += 1; //async_probe_requested
-            index += 8; // gpl_future_syms
-            index += 8; // gpl_future_crcs
-            index += 4; // num_gpl_future_syms
-            index += 4; // num_exentries
-            index += 8; // extable
-            index += 8; // (*init*(void)
-
-            // okay now we're at core_layout, or at least should be
-            // let's print out som elines, to check
-            
-            // a correction ?
-            index += 3;
-
-            // by guess, based on source code
-            //printerate(index, 3);
-
-            //by inspection
-            printerate(physAddr + 47 * 8, 3);
-        }
 
         void PrintEverythingUpToModuleLayoutFromListHead(int physAddr)
         {
