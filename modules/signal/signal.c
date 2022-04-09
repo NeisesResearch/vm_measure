@@ -228,6 +228,8 @@ static int connector_pci_probe(struct pci_dev *dev,
     printk("pud_SHIFT is %d\n", PUD_SHIFT);
     printk("pgdir_SHIFT is %d\n", PGDIR_SHIFT);
     printk("==============================\n");
+    printk("Module_name_len is %d\n", MODULE_NAME_LEN);
+    printk("==============================\n");
 
 
 
