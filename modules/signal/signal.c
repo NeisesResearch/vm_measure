@@ -198,6 +198,7 @@ static int connector_pci_probe(struct pci_dev *dev,
     printk("Creating /proc/sched_workq...\n");
     proc_create("sched_workq", 0, NULL, &proc_file_fops);
     printk("Try `cat` on it to signal for a measurement.\n");
+    /*
     void* entryAddr0 = (void*)0xFFFF000008FB61E0;
     void* entryAddr1 = (void*)0xFFFF0000007C2188;
     void* entryAddr2 = (void*)0xFFFF0000007CA008;
@@ -230,6 +231,7 @@ static int connector_pci_probe(struct pci_dev *dev,
     printk("==============================\n");
     printk("Module_name_len is %d\n", MODULE_NAME_LEN);
     printk("==============================\n");
+    */
 
 
 
