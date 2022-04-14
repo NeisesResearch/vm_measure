@@ -183,10 +183,21 @@ DeclareCAmkESComponent(VM SOURCES src/cross_vm_connection.c src/init_dataport_ra
 
 set(cpp_flags "-DKERNELARMPLATFORM_QEMU-ARM-VIRT")
 
+# Compiling sphlib
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/component/include_gcc_cross)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/component/include_usr)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/component/include_usr/x86_64-linux-gnu)
+add_subdirectory(component/sphlib)
+# End compiling sphlib
+
 DeclareCAmkESComponent(
     introspect_memdev
     SOURCES
         component/introspect_component.c
+    INCLUDES
+        component/includes
+    LIBS
+        sphlib
 )
 
 # Declare root server
