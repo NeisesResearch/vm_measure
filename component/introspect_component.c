@@ -107,7 +107,7 @@ int run(void)
             return finalPaddr;
         }
 
-        printf("Collect module pointers\n");
+        printf("Collect module pointers...\n");
         /* modulePtrs is a list of offsets into memdev that refer to kernel
         ** modules. They are physical memory addresses with the RAM_BASE
         ** already subtracted. Assume there are no more than 128 modules.
@@ -216,11 +216,11 @@ int run(void)
         struct module_measurement {
             char module_name[56];
             uint8_t* ro_data;
-        }
+        };
 
         void InterpretKernelModule(uint64_t inputAddress)
         {
-            printf("module address: %016X\n", inputAddress);
+            printf("Module Address: %016X\n", inputAddress);
             //printf("top. module_pointer is %016X\n", module_pointer);
             /*
             for(int j=0; j<24; j++)
@@ -242,6 +242,7 @@ int run(void)
             {
                 printf("%c", module_name[j]);
             }
+            printf("\n");
 
             struct module_layout thisModuleLayout = GetModuleLayoutFromListHead((int)inputAddress);
             uint64_t basePtr = TranslationTableWalk(thisModuleLayout.base);
