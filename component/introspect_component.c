@@ -177,7 +177,7 @@ void PrintDigest(uint8_t* digest)
 
 void InterpretKernelModule(uint64_t inputAddress, uint8_t* rodataDigest)
 {
-    printf("Module Address: %016X\n", inputAddress);
+    //printf("Module Address: %016X\n", inputAddress);
     //printf("top. module_pointer is %016X\n", module_pointer);
     /*
     for(int j=0; j<24; j++)
@@ -194,12 +194,14 @@ void InterpretKernelModule(uint64_t inputAddress, uint8_t* rodataDigest)
     {
         module_name[j-16] = ((char*)memdev)[inputAddress+j];
     }
+    /*
     printf("Module Name: ");
     for(int j=0; j<56; j++)
     {
         printf("%c", module_name[j]);
     }
     printf("\n");
+    */
 
     struct module_layout thisModuleLayout = GetModuleLayoutFromListHead((int)inputAddress);
     uint64_t basePtr = TranslationTableWalk(thisModuleLayout.base);
@@ -288,7 +290,6 @@ int run(void)
             modulePtrs[i] = 0;
         }
         int numModulePtrs = 0;
-
         uint64_t* list_head_ptr = (uint64_t*)(((char*)memdev)+LIST_HEAD_ADDR);
         uint64_t module_pointer = TranslationTableWalk(list_head_ptr[0]);
         while(module_pointer != LIST_HEAD_ADDR)
@@ -300,6 +301,7 @@ int run(void)
             module_pointer = TranslationTableWalk(modLongPtr[0]);
         }
 
+        printf("Collecting digests over module rodata...\n");
         uint8_t* module_digests = malloc(64 * 128);
         for(int i=0; i<64*128; i++)
         {
@@ -313,6 +315,7 @@ int run(void)
             }
         }
 
+        printf("Digests collected:\n");
         for(int i=0; i<4; i++)
         {
             PrintDigest(module_digests+i*64);
