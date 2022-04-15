@@ -187,6 +187,7 @@ set(cpp_flags "-DKERNELARMPLATFORM_QEMU-ARM-VIRT")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/component/include_gcc_cross)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/component/include_usr)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/component/include_usr/x86_64-linux-gnu)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/component/sphlib)
 add_subdirectory(component/sphlib)
 # End compiling sphlib
 
@@ -196,8 +197,9 @@ DeclareCAmkESComponent(
         component/introspect_component.c
     INCLUDES
         component/includes
+        component/sphlib
     LIBS
-        sphlib
+        sph
 )
 
 # Declare root server
