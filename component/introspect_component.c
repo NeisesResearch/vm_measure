@@ -87,83 +87,6 @@ uint64_t TranslationTableWalk(uint64_t inputAddr)
     return finalPaddr;
 }
 
-struct module_measurement {
-    char module_name[56];
-    uint8_t* ro_data;
-};
-
-void InterpretKernelModule(uint64_t inputAddress)
-{
-    printf("Module Address: %016X\n", inputAddress);
-    //printf("top. module_pointer is %016X\n", module_pointer);
-    /*
-    for(int j=0; j<24; j++)
-    {
-        if(j%8==0&&j>0){printf("\n");}
-        if(j<16){printf("%02X", ((char*)memdev)[inputAddress + j]);}
-        else{printf("%C", ((char*)memdev)[inputAddress + j]);}
-    }
-    printf("\n");
-    */
-
-    char module_name[56];
-    for(int j=16; j<56+16; j++)
-    {
-        module_name[j-16] = ((char*)memdev)[inputAddress+j];
-    }
-    printf("Module Name: ");
-    for(int j=0; j<56; j++)
-    {
-        printf("%c", module_name[j]);
-    }
-    printf("\n");
-
-    struct module_layout thisModuleLayout = GetModuleLayoutFromListHead((int)inputAddress);
-    uint64_t basePtr = TranslationTableWalk(thisModuleLayout.base);
-    /*
-    printf("base: %016X\n", thisModuleLayout.base);
-    printf("size: %08X\n", thisModuleLayout.size);
-    printf("text size: %08X\n", thisModuleLayout.text_size);
-    printf("ro size: %08X\n", thisModuleLayout.ro_size);
-    printf("ro after init size: %08X\n", thisModuleLayout.ro_after_init_size);
-    printf("base paddr: %016X\n", basePtr);
-    */
-    uint8_t* rodata = malloc(thisModuleLayout.ro_size);
-    for(int i=0; i<thisModuleLayout.ro_size; i++)
-    {
-        rodata[i] = ((char*)memdev)[basePtr+i];
-    }
-
-    // can print out the rodata here to see strings from the source
-    //printerateChars(basePtr, thisModuleLayout.ro_size);
-}
-
-void printerate(int physAddr, int numLongs)
-{
-    uint64_t* printerHead = (uint64_t*)((char*)memdev+physAddr);
-    for(int i=0; 8*i < numLongs; i++)
-    {
-        for(int j=0; j<8; j++)
-        {
-            printf("%016X ", printerHead[i*8+j]);
-            //printf("%02X", ((char*)memdev)[physAddr + 8*i + j]);
-        }
-        printf("\n");
-    }
-    printf("\n");
-}
-
-void printerateChars(int physAddr, int numBytes)
-{
-    char* printerHead = ((char*)memdev+physAddr);
-    for(int i=0; i < numBytes; i++)
-    {
-        if(i%64==0&&i!=0){printf("\n");}
-        printf("%c ", printerHead[i]);
-    }
-    printf("\n");
-}
-
 struct module_layout {
     uint64_t base;
     unsigned int size;
@@ -199,16 +122,8 @@ struct module_layout GetModuleLayoutFromListHead(int physAddr)
     index += 8; // extable
     index += 8; // (*init*(void)
 
-    // okay now we're at core_layout, or at least should be
-    // let's print out som elines, to check
-    
     // a correction ?
     index += 3;
-
-    // by guess, based on source code
-    //printerate(index, 3);
-
-
 
     //by inspection
     //printerate(physAddr + 47 * 8, 3);
@@ -221,9 +136,126 @@ struct module_layout GetModuleLayoutFromListHead(int physAddr)
     return thisModule;
 }
 
+struct module_measurement {
+    char module_name[56];
+    uint8_t* ro_data;
+};
+
+void Sha512(uint8_t* inputBytes, size_t inputLength, uint8_t* outputBytes)
+{
+    sph_sha512_context shaContext;
+    sph_sha512_context* contextPtr = &shaContext;
+    sph_sha512_init((void*)contextPtr);
+    void* input = (void*)inputBytes;
+    sph_sha512((void*)contextPtr, input, inputLength);
+    void* output = malloc(64);
+    sph_sha512_close((void*)contextPtr, output);
+    for(int i=0; i<64; i++)
+    {
+        outputBytes[i] = ((uint8_t*)output)[i];
+    }
+    free(output);
+    /*
+    printf("output is:\n", outputBytes);
+    for(int i=0; i<64; i++)
+    {
+        printf("%02X ", outputBytes[i]);
+    }
+    printf("\n");
+    */
+}
+
+void PrintDigest(uint8_t* digest)
+{
+    for(int i=0; i<64; i++)
+    {
+        if(i>0&&i%16==0){printf("\n");}
+        printf("%02X ", digest[i]);
+    }
+    printf("\n");
+}
+
+void InterpretKernelModule(uint64_t inputAddress, uint8_t* rodataDigest)
+{
+    printf("Module Address: %016X\n", inputAddress);
+    //printf("top. module_pointer is %016X\n", module_pointer);
+    /*
+    for(int j=0; j<24; j++)
+    {
+        if(j%8==0&&j>0){printf("\n");}
+        if(j<16){printf("%02X", ((char*)memdev)[inputAddress + j]);}
+        else{printf("%C", ((char*)memdev)[inputAddress + j]);}
+    }
+    printf("\n");
+    */
+
+    char module_name[56];
+    for(int j=16; j<56+16; j++)
+    {
+        module_name[j-16] = ((char*)memdev)[inputAddress+j];
+    }
+    printf("Module Name: ");
+    for(int j=0; j<56; j++)
+    {
+        printf("%c", module_name[j]);
+    }
+    printf("\n");
+
+    struct module_layout thisModuleLayout = GetModuleLayoutFromListHead((int)inputAddress);
+    uint64_t basePtr = TranslationTableWalk(thisModuleLayout.base);
+    /*
+    printf("base: %016X\n", thisModuleLayout.base);
+    printf("size: %08X\n", thisModuleLayout.size);
+    printf("text size: %08X\n", thisModuleLayout.text_size);
+    printf("ro size: %08X\n", thisModuleLayout.ro_size);
+    printf("ro after init size: %08X\n", thisModuleLayout.ro_after_init_size);
+    printf("base paddr: %016X\n", basePtr);
+    */
+    // collect the read-only data
+    uint8_t* rodata = malloc(thisModuleLayout.ro_size);
+    for(int i=0; i<thisModuleLayout.ro_size; i++)
+    {
+        rodata[i] = ((char*)memdev)[basePtr+i];
+    }
+
+    // digest the read-only data with Sha512 from sphlib
+    Sha512(rodata, thisModuleLayout.ro_size, rodataDigest);
+    free(rodata);
+
+    // can print out the rodata here to see strings from the source
+    //printerateChars(basePtr, thisModuleLayout.ro_size);
+}
+
+void printerate(int physAddr, int numLongs)
+{
+    uint64_t* printerHead = (uint64_t*)((char*)memdev+physAddr);
+    for(int i=0; 8*i < numLongs; i++)
+    {
+        for(int j=0; j<8; j++)
+        {
+            printf("%016X ", printerHead[i*8+j]);
+            //printf("%02X", ((char*)memdev)[physAddr + 8*i + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
+void printerateChars(int physAddr, int numBytes)
+{
+    char* printerHead = ((char*)memdev+physAddr);
+    for(int i=0; i < numBytes; i++)
+    {
+        if(i%64==0&&i!=0){printf("\n");}
+        printf("%c ", printerHead[i]);
+    }
+    printf("\n");
+}
+
+
 void ShaTest()
 {
-    printf("some sha testing...\n");
+    printf("The Sha512 digest of 'abc' is:\n");
     sph_sha512_context shaContext;
     sph_sha512_context* contextPtr = &shaContext;
     sph_sha512_init((void*)contextPtr);
@@ -235,19 +267,14 @@ void ShaTest()
     void* output = malloc(64);
     sph_sha512_close((void*)contextPtr, output);
     uint8_t* byteOutput = (uint8_t*)output;
-    printf("output is:\n", byteOutput);
-    for(int i=0; i<64; i++)
-    {
-        printf("%02X ", byteOutput[i]);
-    }
-    printf("\n");
+    PrintDigest(byteOutput);
 }
 
 int run(void)
 {
-    ShaTest();
     while (1) {
         ready_wait();
+        ShaTest();
         printf("introspect: Got an event\n");
 
         printf("Collecting module pointers...\n");
@@ -273,12 +300,23 @@ int run(void)
             module_pointer = TranslationTableWalk(modLongPtr[0]);
         }
 
+        uint8_t* module_digests = malloc(64 * 128);
+        for(int i=0; i<64*128; i++)
+        {
+            module_digests[i] = 0;
+        }
         for(int i=0; i<128; i++)
         {
             if(modulePtrs[i] != 0)
             {
-                InterpretKernelModule(modulePtrs[i]);
+                InterpretKernelModule(modulePtrs[i], module_digests+i*64);
             }
+        }
+
+        for(int i=0; i<4; i++)
+        {
+            PrintDigest(module_digests+i*64);
+            printf("\n");
         }
 
         done_emit();
